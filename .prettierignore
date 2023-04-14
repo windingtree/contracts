@@ -1,0 +1,8 @@
+node_modules
+.github
+dist
+lib
+build
+coverage
+typedoc
+temp
