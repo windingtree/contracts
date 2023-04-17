@@ -6,3 +6,9 @@ build
 coverage
 typedoc
 temp
+artifacts-zk
+cache-zk
+artifacts
+cache
+network
+typechain
