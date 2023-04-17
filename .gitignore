@@ -14,5 +14,7 @@ coverage
 typedoc
 artifacts-zk
 cache-zk
+artifacts
+cache
 typechain
 network/volumes
