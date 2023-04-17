@@ -19,5 +19,10 @@
     "importsNotUsedAsValues": "remove",
     "noImplicitReturns": true
   },
-  "include": ["./src/**/*.ts", "./test/**/*.ts", "./typechain/**/*.ts", "./hardhat.config.ts"]
+  "include": [
+    "./src/**/*.ts",
+    "./test/**/*.ts",
+    "./typechain/**/*.ts",
+    "./hardhat.config.ts"
+  ]
 }
