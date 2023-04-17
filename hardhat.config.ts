@@ -1,9 +1,28 @@
+import 'dotenv/config';
 import { HardhatUserConfig } from 'hardhat/config.js';
 import '@matterlabs/hardhat-zksync-deploy';
 import '@matterlabs/hardhat-zksync-solc';
-import '@nomicfoundation/hardhat-chai-matchers';
+import '@matterlabs/hardhat-zksync-chai-matchers';
+import '@matterlabs/hardhat-zksync-verify';
 import '@nomiclabs/hardhat-solhint';
 import '@typechain/hardhat';
+
+if (!process.env.INFURA_API_KEY) {
+  throw new Error('INFURA_API_KEY must be provided with .env');
+}
+
+const zkSyncTestnet =
+  process.env.NODE_ENV === 'test'
+    ? {
+        url: 'http://localhost:3050',
+        ethNetwork: 'http://localhost:8545',
+        zksync: true,
+      }
+    : {
+        url: 'https://zksync2-testnet.zksync.dev',
+        ethNetwork: 'goerli',
+        zksync: true,
+      };
 
 const config: HardhatUserConfig = {
   zksolc: {
@@ -18,11 +37,11 @@ const config: HardhatUserConfig = {
     hardhat: {
       zksync: true,
     },
-    zkSyncTestnet: {
-      url: 'https://zksync2-testnet.zksync.dev',
-      ethNetwork: 'goerli', // Can also be the RPC URL of the network (e.g. `https://goerli.infura.io/v3/<API_KEY>`)
-      zksync: true,
+    goerli: {
+      url: `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY}`,
+      zksync: false,
     },
+    zkSyncTestnet,
   },
   solidity: {
     version: '0.8.19',
