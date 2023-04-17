@@ -1,13 +1,10 @@
 import 'dotenv/config';
 import { HardhatUserConfig } from 'hardhat/config.js';
-import '@matterlabs/hardhat-zksync-deploy';
-import '@matterlabs/hardhat-zksync-solc';
-import '@matterlabs/hardhat-zksync-chai-matchers';
-import '@matterlabs/hardhat-zksync-verify';
+import '@matterlabs/hardhat-zksync-toolbox';
 import '@nomiclabs/hardhat-solhint';
 import '@typechain/hardhat';
 
-if (!process.env.INFURA_API_KEY) {
+if (!process.env.INFURA_API_KEY && process.env.NODE_ENV !== 'test') {
   throw new Error('INFURA_API_KEY must be provided with .env');
 }
 
@@ -38,7 +35,7 @@ const config: HardhatUserConfig = {
       zksync: true,
     },
     goerli: {
-      url: `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY}`,
+      url: `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY ?? ''}`,
       zksync: false,
     },
     zkSyncTestnet,
