@@ -1,30 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155SupplyUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 
 abstract contract ERC1155Token is
-  Initializable,
-  ERC1155Upgradeable,
-  OwnableUpgradeable,
-  PausableUpgradeable,
-  ERC1155SupplyUpgradeable
+  ERC1155(""),
+  Ownable,
+  Pausable,
+  ERC1155Supply
 {
-  /// @custom:oz-upgrades-unsafe-allow constructor
-  constructor() {
-    _disableInitializers();
-  }
-
-  function initialize() public virtual initializer {
-    __ERC1155_init("");
-    __Ownable_init();
-    __Pausable_init();
-  }
-
   function pause() public onlyOwner {
     _pause();
   }
@@ -40,7 +27,7 @@ abstract contract ERC1155Token is
     uint256[] memory ids,
     uint256[] memory amounts,
     bytes memory data
-  ) internal override(ERC1155Upgradeable, ERC1155SupplyUpgradeable) whenNotPaused {
+  ) internal override(ERC1155, ERC1155Supply) whenNotPaused {
     super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
   }
 }
