@@ -4,12 +4,6 @@ import '@matterlabs/hardhat-zksync-toolbox';
 import '@nomiclabs/hardhat-solhint';
 import '@typechain/hardhat';
 
-console.log(
-  process.env.NODE_ENV,
-  process.env.NODE_ENV !== 'test',
-  !process.env.INFURA_API_KEY,
-);
-
 if (process.env.NODE_ENV !== 'test' && !process.env.INFURA_API_KEY) {
   throw new Error('INFURA_API_KEY must be provided with .env');
 }

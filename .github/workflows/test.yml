@@ -18,6 +18,8 @@ jobs:
           node-version: "lts/*"
       - name: Install dependencies
         run: yarn install --frozen-lockfile
+        env:
+          NODE_ENV: test
       - name: Lint
         run: yarn lint
       - name: Test
