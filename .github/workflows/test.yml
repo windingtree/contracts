@@ -22,3 +22,5 @@ jobs:
         run: yarn lint
       - name: Test
         run: yarn test:src
+        env:
+          NODE_ENV: test
