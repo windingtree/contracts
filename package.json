@@ -96,7 +96,7 @@
     "clean": "rm -rf ./lib && hardhat clean",
     "build": "yarn clean && hardhat compile && tsc -p ./tsconfig.build.json",
     "test:contracts": "hardhat test",
-    "test:src": "mocha -t 60000 --extension spec.ts",
+    "test:src": "mocha -t 60000 --extension spec.ts test/src",
     "lint": "hardhat check && eslint --ext .ts",
     "lint:fix": "eslint --ext .ts --fix && prettier --check !network --write .",
     "prepare": "husky install",
