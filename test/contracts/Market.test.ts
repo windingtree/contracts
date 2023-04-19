@@ -2,10 +2,25 @@ import { expect } from 'chai';
 import { Wallet, Provider } from 'zksync-web3';
 import * as hre from 'hardhat';
 import { Deployer } from '@matterlabs/hardhat-zksync-deploy';
-import { Market } from '../../typechain';
+import { Market, MockERC20Dec18 } from '../../typechain';
+import { buildRandomOffer } from './utils';
 
 const TEST_PK = '0x7726827caac94a7f9e1b160f7ea819f172f7b6f9d2a97f992c38edeab82d4110';
 const NOT_OWNER_PK = '0xac1e735be8536c6534bb4f17f06f6afc73b2b5ba84ac2cfb12f7461b20c0bbe3';
+const BUYER_PK = '0xac1e735be8536c6534bb4f17f06f6afc73b2b5ba84ac2cfb12f7461b20c0bbe3';
+
+const deployErc20 = async (
+  deployer: Deployer,
+  owner: string,
+): Promise<MockERC20Dec18> => {
+  const artifact = await deployer.loadArtifact('MockERC20Dec18');
+  const contract = (await deployer.deploy(artifact, [
+    'STABLE',
+    'STABLE',
+    owner,
+  ])) as MockERC20Dec18;
+  return contract;
+};
 
 const deployMarket = async (deployer: Deployer, owner: string): Promise<Market> => {
   const artifact = await deployer.loadArtifact('Market');
@@ -17,18 +32,23 @@ describe('Market contract', () => {
   let provider: Provider;
   let wallet: Wallet;
   let notOwnerWallet: Wallet;
+  let buyerWallet: Wallet;
   let deployer: Deployer;
   let market: Market;
+  let erc20: MockERC20Dec18;
 
   before(() => {
     provider = Provider.getDefaultProvider();
     wallet = new Wallet(TEST_PK, provider);
     notOwnerWallet = new Wallet(NOT_OWNER_PK, provider);
+    buyerWallet = new Wallet(BUYER_PK, provider);
     deployer = new Deployer(hre, wallet);
   });
 
   before(async () => {
     market = await deployMarket(deployer, wallet.address);
+    erc20 = await deployErc20(deployer, wallet.address);
+    await (await erc20.mint(buyerWallet.address, '1000000000000000000000000')).wait();
   });
 
   describe('Pausable', () => {
@@ -87,5 +107,9 @@ describe('Market contract', () => {
         await expect(market.unpause()).to.rejectedWith('Pausable: not paused');
       });
     });
+  });
+
+  describe('DealsRegistry', () => {
+    //
   });
 });

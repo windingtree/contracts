@@ -6,12 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 
-abstract contract ERC1155Token is
-  ERC1155(""),
-  Ownable,
-  Pausable,
-  ERC1155Supply
-{
+abstract contract ERC1155Token is ERC1155(""), Ownable, Pausable, ERC1155Supply {
   function pause() public onlyOwner {
     _pause();
   }
@@ -30,4 +25,6 @@ abstract contract ERC1155Token is
   ) internal override(ERC1155, ERC1155Supply) whenNotPaused {
     super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
   }
+
+  uint256[50] private __gap;
 }

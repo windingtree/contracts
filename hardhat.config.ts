@@ -1,7 +1,6 @@
 import 'dotenv/config';
 import { HardhatUserConfig } from 'hardhat/config.js';
 import '@matterlabs/hardhat-zksync-toolbox';
-import '@nomiclabs/hardhat-solhint';
 import '@typechain/hardhat';
 
 const zkSyncTestnet =
