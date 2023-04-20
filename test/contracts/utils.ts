@@ -1,4 +1,4 @@
-import { utils, TypedDataField, Wallet } from 'ethers';
+import { utils, BigNumber, BigNumberish, TypedDataField, Wallet } from 'ethers';
 import {
   PAYMENT_OPTION_TYPE_HASH,
   CANCEL_OPTION_TYPE_HASH,
@@ -11,34 +11,34 @@ export const nonces: Record<string, number> = {
 
 export interface Request {
   id: string;
-  expire: number;
-  nonce: number;
+  expire: BigNumberish;
+  nonce: BigNumberish;
   topic: string;
   query: unknown;
 }
 
 export interface PaymentOption {
   id: string;
-  price: string;
+  price: BigNumberish;
   asset: string;
 }
 
 export interface CancelOption {
-  time: number;
-  penalty: number;
+  time: BigNumberish;
+  penalty: BigNumberish;
 }
 
 export interface OfferPayload {
   id: string;
-  expire: number;
+  expire: BigNumberish;
   supplierId: string;
-  chainId: number;
+  chainId: BigNumberish;
   requestHash: string;
   optionsHash: string;
   paymentHash: string;
   cancelHash: string;
   transferable: boolean;
-  checkIn: number;
+  checkIn: BigNumberish;
 }
 
 export interface Offer {
@@ -85,7 +85,6 @@ export const hashPaymentOptionArray = (options: PaymentOption[]): string => {
   for (let i = 0; i < options.length; i++) {
     hashes[i] = hashPaymentOption(options[i]);
   }
-
   return utils.solidityKeccak256(['bytes32[]'], [hashes]);
 };
 
@@ -176,12 +175,15 @@ export const offerEip712Types: Record<string, Array<TypedDataField>> = {
 
 export const buildRandomOffer = async (
   signer: Wallet,
+  name: string,
+  version: string,
+  chainId: BigNumberish,
   verifyingContract: string,
   erc20address: string,
 ): Promise<Offer> => {
   const request: Request = {
     id: randomId(),
-    expire: Math.round(Date.now() / 1000) + 10000,
+    expire: BigNumber.from(Math.round(Date.now() / 1000) + 10000),
     nonce: nonces.request++,
     topic: Math.random().toString(),
     query: {},
@@ -190,25 +192,25 @@ export const buildRandomOffer = async (
   const payment: PaymentOption[] = [
     {
       id: randomId(),
-      price: '1',
+      price: BigNumber.from('1'),
       asset: erc20address,
     },
   ];
 
-  const checkInTime = Math.round(Date.now() / 1000) + 100000;
+  const checkInTime = BigNumber.from(Math.round(Date.now() / 1000) + 100000);
 
   const cancel: CancelOption[] = [
     {
       time: checkInTime,
-      penalty: 100,
+      penalty: BigNumber.from('100'),
     },
   ];
 
   const offerPayload: OfferPayload = {
     id: randomId(),
-    expire: Math.round(Date.now() / 1000) + 20000,
+    expire: BigNumber.from(Math.round(Date.now() / 1000) + 20000),
     supplierId: randomId(),
-    chainId: 270,
+    chainId: BigNumber.from(270),
     requestHash: hashObject(request),
     optionsHash: hashObject({}),
     paymentHash: hashPaymentOptionArray(payment),
@@ -219,9 +221,9 @@ export const buildRandomOffer = async (
 
   const signature = await signer._signTypedData(
     {
-      name: 'Market',
-      version: '1',
-      chainId: 270,
+      name,
+      version,
+      chainId,
       verifyingContract,
     },
     offerEip712Types,

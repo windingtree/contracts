@@ -14,7 +14,7 @@ abstract contract DealsRegistry is Context, EIP712 {
   using SignatureUtils for bytes;
 
   bytes32 public constant PAYMENT_OPTION_TYPE_HASH =
-    keccak256("PaymentOption(string id,uint256 price,address asset)");
+    keccak256("PaymentOption(bytes32 id,uint256 price,address asset)");
 
   bytes32 public constant CANCEL_OPTION_TYPE_HASH =
     keccak256("CancelOption(uint256 time,uint256 penalty)");
@@ -27,7 +27,7 @@ abstract contract DealsRegistry is Context, EIP712 {
 
   struct PaymentOption {
     /// @dev Unique paymentOptions option Id
-    string id;
+    bytes32 id;
     /// @dev Asset price in WEI
     uint256 price;
     /// @dev ERC20 asset contract address
@@ -80,7 +80,7 @@ abstract contract DealsRegistry is Context, EIP712 {
   }
 
   /// @dev Mapping of an offer Id on a Deal
-  mapping(bytes32 => Deal) private _deals;
+  mapping(bytes32 => Deal) public deals;
 
   /// @dev Emitted when a Deal is created by a buyer
   event DealCreated(bytes32 indexed offerId, address indexed buyer);
@@ -104,11 +104,15 @@ abstract contract DealsRegistry is Context, EIP712 {
    */
   constructor(string memory name, string memory version) EIP712(name, version) {}
 
+  function hash(bytes32[] memory hashes) internal pure returns (bytes32) {
+    return keccak256(abi.encodePacked(hashes));
+  }
+
   /// @dev Creates a hash of a PaymentOption
   function hash(PaymentOption memory paymentOptions) internal pure returns (bytes32) {
     return
       keccak256(
-        abi.encode(
+        abi.encodePacked(
           PAYMENT_OPTION_TYPE_HASH,
           paymentOptions.id,
           paymentOptions.price,
@@ -119,7 +123,7 @@ abstract contract DealsRegistry is Context, EIP712 {
 
   /// @dev Creates a hash of a CancelOption
   function hash(CancelOption memory cancel) internal pure returns (bytes32) {
-    return keccak256(abi.encode(CANCEL_OPTION_TYPE_HASH, cancel.time, cancel.penalty));
+    return keccak256(abi.encodePacked(CANCEL_OPTION_TYPE_HASH, cancel.time, cancel.penalty));
   }
 
   /// @dev Creates a hash of an array of PaymentOption
@@ -130,7 +134,7 @@ abstract contract DealsRegistry is Context, EIP712 {
       hashes[i] = hash(paymentOptions[i]);
     }
 
-    return keccak256(abi.encodePacked(hashes));
+    return hash(hashes);
   }
 
   /// @dev Creates a hash of an array of CancelOption
@@ -141,7 +145,7 @@ abstract contract DealsRegistry is Context, EIP712 {
       hashes[i] = hash(cancel[i]);
     }
 
-    return keccak256(abi.encodePacked(hashes));
+    return hash(hashes);
   }
 
   /// @dev Creates a hash of an Offer
@@ -164,6 +168,10 @@ abstract contract DealsRegistry is Context, EIP712 {
       );
   }
 
+  function getHash(Offer memory offer) public view returns (bytes32) {
+    return _hashTypedDataV4(hash(offer));
+  }
+
   /**
    * @dev Creates a Deal on a base of an offer
    * @param offer An offer payload
@@ -176,15 +184,18 @@ abstract contract DealsRegistry is Context, EIP712 {
   function deal(
     Offer memory offer,
     PaymentOption[] memory paymentOptions,
-    string memory paymentId,
+    bytes32 paymentId,
     bytes[] memory signs
   ) public {
     address buyer = _msgSender();
-    bytes32 offerHash = hash(offer);
+    // bytes32 offerHash = _hashTypedDataV4(hash(offer));
 
-    if (!buyer.isValidSignatureNow(offerHash, signs[0])) {
-      revert InvalidOfferSignature();
-    }
+    // @todo Create supplier registry
+    // @todo Get supplier signer address from the supplier registry
+
+    // if (!supplier.isValidSignatureNow(offerHash, signs[0])) {
+    //   revert InvalidOfferSignature();
+    // }
 
     bytes32 paymentHash = hash(paymentOptions);
 
@@ -196,7 +207,7 @@ abstract contract DealsRegistry is Context, EIP712 {
     address asset;
 
     for (uint256 i = 0; i < paymentOptions.length; i++) {
-      if (paymentOptions[i].id.equal(paymentId)) {
+      if (paymentOptions[i].id == paymentId) {
         price = paymentOptions[i].price;
         asset = paymentOptions[i].asset;
         break;
@@ -216,7 +227,7 @@ abstract contract DealsRegistry is Context, EIP712 {
       revert DealTransferFailed();
     }
 
-    _deals[offer.id] = Deal(offer, price, asset, DealStatus.Created);
+    deals[offer.id] = Deal(offer, price, asset, DealStatus.Created);
 
     emit DealCreated(offer.id, buyer);
 

@@ -10,3 +10,4 @@ artifacts-zk
 cache-zk
 artifacts
 cache
+./**/*.sol
