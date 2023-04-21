@@ -5,7 +5,11 @@ import "./ERC1155Token.sol";
 import "./DealsRegistry.sol";
 
 contract Market is ERC1155Token, DealsRegistry {
-  constructor(address owner, string memory name, string memory version) DealsRegistry(name, version) {
+  constructor(
+    address owner,
+    string memory name,
+    string memory version
+  ) DealsRegistry(name, version) {
     transferOwnership(owner);
   }
 

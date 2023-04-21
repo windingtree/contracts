@@ -3,8 +3,8 @@ import { Wallet, Provider } from 'zksync-web3';
 import * as hre from 'hardhat';
 import { Deployer } from '@matterlabs/hardhat-zksync-deploy';
 import { Market, MockERC20Dec18 } from '../../typechain';
-import { Offer, buildRandomOffer, hashOfferPayload, offerEip712Types } from './utils';
-import { utils, BigNumber } from 'ethers';
+import { structEqual, Offer, buildRandomOffer } from './utils';
+import { constants } from 'ethers';
 
 const eip712name = 'Market';
 const eip712version = '1';
@@ -61,7 +61,7 @@ describe('Market contract', () => {
     await (await erc20.mint(buyerWallet.address, '1000000000000000000000000')).wait();
   });
 
-  describe.skip('Pausable', () => {
+  describe('Pausable', () => {
     after(async () => {
       if (await market.paused()) {
         await (await market.unpause()).wait();
@@ -135,52 +135,74 @@ describe('Market contract', () => {
       );
     });
 
+    it('should throw if invalid payment options provided', async () => {
+      await expect(
+        (
+          await market
+            .connect(buyerWallet)
+            .deal(offer.payload, [], offer.payment[0].id, [offer.signature], {
+              gasLimit: 5000000,
+            })
+        ).wait(),
+      ).to.rejected; //revertedWithCustomError(market, 'InvalidPaymentOptions');
+    });
+
+    it('should throw if invalid payment option Id provided', async () => {
+      await expect(
+        (
+          await market
+            .connect(buyerWallet)
+            .deal(offer.payload, offer.payment, constants.HashZero, [offer.signature], {
+              gasLimit: 5000000,
+            })
+        ).wait(),
+      ).to.rejected; //revertedWithCustomError(market, 'InvalidPaymentId');
+    });
+
     it('should create a deal', async () => {
       await (
         await erc20.connect(buyerWallet).approve(market.address, offer.payment[0].price)
       ).wait();
+      const balanceOfBuyer = await erc20.balanceOf(buyerWallet.address);
+      const balanceOfMarket = await erc20.balanceOf(market.address);
 
-      // // const localHash = hashOfferPayload(offer.payload);
-      // const localHash = utils._TypedDataEncoder.hash(
-      //   {
-      //     name: 'Market',
-      //     version: '1',
-      //     chainId: 270,
-      //     verifyingContract: market.address,
-      //   },
-      //   offerEip712Types,
-      //   offer.payload
-      // );
-      // console.log('Local hash:', localHash);
+      const tx = await market
+        .connect(buyerWallet)
+        .deal(offer.payload, offer.payment, offer.payment[0].id, [offer.signature]);
+      await tx.wait();
+      await expect(tx)
+        .to.emit(market, 'DealCreated')
+        .withArgs(offer.payload.id, buyerWallet.address);
 
-      // // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      // const contractHash = await market.getHash(offer.payload);
-      // console.log('Contract hash:', contractHash);
-      console.log(
-        '@@@',
-        utils.verifyTypedData(
-          {
-            name: eip712name,
-            version: eip712version,
-            chainId: (await market.provider.getNetwork()).chainId,
-            verifyingContract: market.address,
-          },
-          offerEip712Types,
-          offer.payload,
-          offer.signature,
-        ),
+      const {
+        offer: contractOffer,
+        price,
+        asset,
+        status,
+      } = await market.deals(offer.payload.id);
+      structEqual(contractOffer, offer.payload);
+      expect(price).to.eq(offer.payment[0].price);
+      expect(asset).to.eq(offer.payment[0].asset);
+      expect(status).to.eq(0);
+
+      expect(await erc20.balanceOf(buyerWallet.address)).to.eq(
+        balanceOfBuyer.sub(offer.payment[0].price),
       );
-      console.log('###', supplierWallet.address);
+      expect(await erc20.balanceOf(market.address)).to.eq(
+        balanceOfMarket.add(offer.payment[0].price),
+      );
+    });
 
-      const receipt = await (
-        await market
-          .connect(buyerWallet)
-          .deal(offer.payload, offer.payment, offer.payment[0].id, [offer.signature], {
-            gasLimit: '5000000',
-          })
-      ).wait();
-
-      console.log('@@@', receipt);
+    it('should throw if attempting to create the same deal', async () => {
+      await expect(
+        (
+          await market
+            .connect(buyerWallet)
+            .deal(offer.payload, offer.payment, offer.payment[0].id, [offer.signature], {
+              gasLimit: 5000000,
+            })
+        ).wait(),
+      ).to.rejected; //revertedWithCustomError(market, 'DealExists');
     });
   });
 });

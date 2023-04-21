@@ -10,7 +10,6 @@ import "./utils/SignatureUtils.sol";
 
 abstract contract DealsRegistry is Context, EIP712 {
   using SignatureChecker for address;
-  using StringUtils for string;
   using SignatureUtils for bytes;
 
   bytes32 public constant PAYMENT_OPTION_TYPE_HASH =
@@ -25,6 +24,9 @@ abstract contract DealsRegistry is Context, EIP712 {
       "Offer(bytes32 id,uint256 expire,bytes32 supplierId,uint256 chainId,bytes32 requestHash,bytes32 optionsHash,bytes32 paymentHash,bytes32 cancelHash,bool transferable,uint256 checkIn)"
     );
 
+  /**
+   * @dev Payment option
+   */
   struct PaymentOption {
     /// @dev Unique paymentOptions option Id
     bytes32 id;
@@ -34,6 +36,9 @@ abstract contract DealsRegistry is Context, EIP712 {
     address asset;
   }
 
+  /**
+   * @dev Deal cancellation option
+   */
   struct CancelOption {
     /// @dev Seconds before checkIn
     uint256 time;
@@ -41,6 +46,9 @@ abstract contract DealsRegistry is Context, EIP712 {
     uint256 penalty;
   }
 
+  /**
+   * @dev Offer payload
+   */
   struct Offer {
     /// @dev Offer Id
     bytes32 id;
@@ -64,6 +72,9 @@ abstract contract DealsRegistry is Context, EIP712 {
     uint256 checkIn;
   }
 
+  /**
+   * @dev Deal status
+   */
   enum DealStatus {
     Created, // Just created
     Claimed, // Claimed by the supplier
@@ -72,10 +83,17 @@ abstract contract DealsRegistry is Context, EIP712 {
     Disputed // Dispute started
   }
 
+  /**
+   * @dev Deal storage struct
+   */
   struct Deal {
+    /// @dev Offer payload
     Offer offer;
+    /// @dev Deal price
     uint256 price;
+    /// @dev Deal asset
     address asset;
+    /// @dev Current deal status
     DealStatus status;
   }
 
@@ -85,17 +103,20 @@ abstract contract DealsRegistry is Context, EIP712 {
   /// @dev Emitted when a Deal is created by a buyer
   event DealCreated(bytes32 indexed offerId, address indexed buyer);
 
-  /// @dev Thrown when a user attempts to make a deal using an offer with an invalid signature
+  /// @dev Thrown when a user attempts to create a deal using an offer with an invalid signature
   error InvalidOfferSignature();
 
-  /// @dev Thrown when a user attempts to make a deal providing an invalid payment options
+  /// @dev Thrown when a user attempts to create an already existing Deal
+  error DealExists();
+
+  /// @dev Thrown when a user attempts to create a deal providing an invalid payment options
   error InvalidPaymentOptions();
 
-  /// @dev Thrown when a user attempts to make a deal providing an invalid payment option Id
+  /// @dev Thrown when a user attempts to create a deal providing an invalid payment option Id
   error InvalidPaymentId();
 
   /// @dev Thrown when a Deal funds transfer is failed
-  error DealTransferFailed();
+  error DealFundsTransferFailed();
 
   /**
    * @dev DealsRegistry constructor
@@ -123,7 +144,8 @@ abstract contract DealsRegistry is Context, EIP712 {
 
   /// @dev Creates a hash of a CancelOption
   function hash(CancelOption memory cancel) internal pure returns (bytes32) {
-    return keccak256(abi.encodePacked(CANCEL_OPTION_TYPE_HASH, cancel.time, cancel.penalty));
+    return
+      keccak256(abi.encodePacked(CANCEL_OPTION_TYPE_HASH, cancel.time, cancel.penalty));
   }
 
   /// @dev Creates a hash of an array of PaymentOption
@@ -168,10 +190,6 @@ abstract contract DealsRegistry is Context, EIP712 {
       );
   }
 
-  function getHash(Offer memory offer) public view returns (bytes32) {
-    return _hashTypedDataV4(hash(offer));
-  }
-
   /**
    * @dev Creates a Deal on a base of an offer
    * @param offer An offer payload
@@ -186,8 +204,9 @@ abstract contract DealsRegistry is Context, EIP712 {
     PaymentOption[] memory paymentOptions,
     bytes32 paymentId,
     bytes[] memory signs
-  ) public {
+  ) external {
     address buyer = _msgSender();
+
     // bytes32 offerHash = _hashTypedDataV4(hash(offer));
 
     // @todo Create supplier registry
@@ -196,6 +215,10 @@ abstract contract DealsRegistry is Context, EIP712 {
     // if (!supplier.isValidSignatureNow(offerHash, signs[0])) {
     //   revert InvalidOfferSignature();
     // }
+
+    if (deals[offer.id].offer.id == offer.id) {
+      revert DealExists();
+    }
 
     bytes32 paymentHash = hash(paymentOptions);
 
@@ -224,7 +247,7 @@ abstract contract DealsRegistry is Context, EIP712 {
       (uint8 v, bytes32 r, bytes32 s) = signs[1].split();
       IERC20(asset).permit(buyer, address(this), price, offer.expire, v, r, s);
     } else if (!IERC20(asset).transferFrom(buyer, address(this), price)) {
-      revert DealTransferFailed();
+      revert DealFundsTransferFailed();
     }
 
     deals[offer.id] = Deal(offer, price, asset, DealStatus.Created);

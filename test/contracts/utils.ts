@@ -1,3 +1,4 @@
+import { expect } from 'chai';
 import { utils, BigNumber, BigNumberish, TypedDataField, Wallet } from 'ethers';
 import {
   PAYMENT_OPTION_TYPE_HASH,
@@ -240,4 +241,11 @@ export const buildRandomOffer = async (
   };
 
   return offer;
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const structEqual = (struct: { [k: string]: any }, obj: { [k: string]: any }) => {
+  for (const key of Object.keys(obj)) {
+    expect(obj[key]).to.eq(struct[key]);
+  }
 };
