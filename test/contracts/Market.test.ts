@@ -1,64 +1,122 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { expect } from 'chai';
 import { Wallet, Provider } from 'zksync-web3';
 import * as hre from 'hardhat';
-import { Deployer } from '@matterlabs/hardhat-zksync-deploy';
-import { Market, MockERC20Dec18 } from '../../typechain';
-import { structEqual, Offer, buildRandomOffer } from './utils';
 import { constants } from 'ethers';
+import { Deployer } from '@matterlabs/hardhat-zksync-deploy';
+import richWallets from '../../network/rich-wallets.json';
+import { Market, MockERC20Dec18 } from '../../typechain';
+import {
+  structEqual,
+  Offer,
+  buildRandomOffer,
+  randomId,
+  createSupplierId,
+} from './utils';
 
 const eip712name = 'Market';
 const eip712version = '1';
-const TEST_PK = '0x7726827caac94a7f9e1b160f7ea819f172f7b6f9d2a97f992c38edeab82d4110';
-const NOT_OWNER_PK = '0xac1e735be8536c6534bb4f17f06f6afc73b2b5ba84ac2cfb12f7461b20c0bbe3';
-const BUYER_PK = '0xac1e735be8536c6534bb4f17f06f6afc73b2b5ba84ac2cfb12f7461b20c0bbe3';
-const SUPPLIER_PK = '0xd293c684d884d56f8d6abd64fc76757d3664904e309a0645baf8522ab6366d9e';
+const minDeposit = '1000000000000000000000';
+
+const createWallets = (provider: Provider): Wallet[] =>
+  richWallets.map((account) => new Wallet(account.privateKey, provider));
 
 const deployErc20 = async (
   deployer: Deployer,
   owner: string,
+  symbol: string,
 ): Promise<MockERC20Dec18> => {
   const artifact = await deployer.loadArtifact('MockERC20Dec18');
   const contract = (await deployer.deploy(artifact, [
-    'STABLE',
-    'STABLE',
+    symbol,
+    symbol,
     owner,
   ])) as MockERC20Dec18;
   return contract;
 };
 
-const deployMarket = async (deployer: Deployer, owner: string): Promise<Market> => {
+const deployMarket = async (
+  deployer: Deployer,
+  owner: string,
+  erc20: MockERC20Dec18,
+): Promise<Market> => {
   const artifact = await deployer.loadArtifact('Market');
   const contract = (await deployer.deploy(artifact, [
     owner,
     eip712name,
     eip712version,
+    erc20.address,
+    minDeposit,
   ])) as Market;
   return contract;
 };
 
+const registerSupplier = async (
+  market: Market,
+  supplierSalt: string,
+  supplierOwnerWallet: Wallet,
+  supplierSignerWallet: Wallet,
+  lif: MockERC20Dec18,
+  enable = true,
+) => {
+  await (
+    await market
+      .connect(supplierOwnerWallet)
+      .register(supplierSalt, supplierSignerWallet.address)
+  ).wait();
+  const supplierId = createSupplierId(supplierOwnerWallet.address, supplierSalt);
+  structEqual(await market.suppliers(supplierId), {
+    id: supplierId,
+    owner: supplierOwnerWallet.address,
+    enabled: false,
+    signer: supplierSignerWallet.address,
+  });
+  await (
+    await lif.connect(supplierOwnerWallet).approve(market.address, minDeposit)
+  ).wait();
+  await (
+    await market.connect(supplierOwnerWallet).addDeposit(supplierId, minDeposit, '0x')
+  ).wait();
+  if (enable) {
+    await (await market.connect(supplierOwnerWallet).toggleSupplier(supplierId)).wait();
+  }
+};
+
 describe('Market contract', () => {
   let provider: Provider;
-  let wallet: Wallet;
+  let deployerWallet: Wallet;
   let notOwnerWallet: Wallet;
   let buyerWallet: Wallet;
-  let supplierWallet: Wallet;
+  let supplierOwnerWallet: Wallet;
+  let supplierSignerWallet: Wallet;
   let deployer: Deployer;
   let market: Market;
   let erc20: MockERC20Dec18;
+  let lif: MockERC20Dec18;
 
   before(() => {
     provider = Provider.getDefaultProvider();
-    wallet = new Wallet(TEST_PK, provider);
-    notOwnerWallet = new Wallet(NOT_OWNER_PK, provider);
-    buyerWallet = new Wallet(BUYER_PK, provider);
-    supplierWallet = new Wallet(SUPPLIER_PK, provider);
-    deployer = new Deployer(hre, wallet);
+    [
+      deployerWallet,
+      notOwnerWallet,
+      buyerWallet,
+      supplierOwnerWallet,
+      supplierSignerWallet,
+    ] = createWallets(provider);
+    deployer = new Deployer(hre, deployerWallet);
   });
 
   before(async () => {
-    market = await deployMarket(deployer, wallet.address);
-    erc20 = await deployErc20(deployer, wallet.address);
+    erc20 = await deployErc20(deployer, deployerWallet.address, 'STABLE');
+    lif = await deployErc20(deployer, deployerWallet.address, 'LIF');
+    market = await deployMarket(deployer, deployerWallet.address, lif);
     await (await erc20.mint(buyerWallet.address, '1000000000000000000000000')).wait();
+    await (
+      await lif.mint(supplierOwnerWallet.address, '1000000000000000000000000')
+    ).wait();
   });
 
   describe('Pausable', () => {
@@ -119,12 +177,126 @@ describe('Market contract', () => {
     });
   });
 
+  describe('SuppliersRegistry', () => {
+    let supplierSalt: string;
+    let supplierId: string;
+
+    beforeEach(async () => {
+      supplierSalt = randomId();
+      supplierId = createSupplierId(supplierOwnerWallet.address, supplierSalt);
+
+      await registerSupplier(
+        market,
+        supplierSalt,
+        supplierOwnerWallet,
+        supplierSignerWallet,
+        lif,
+        false,
+      );
+    });
+
+    it('should be initially disabled', async () => {
+      expect(await market.isSupplierEnabled(supplierId)).to.false;
+    });
+
+    describe('#toggleSupplier(bytes32)', () => {
+      it('should throw if called not by a owner', async () => {
+        await expect(
+          (
+            await market.connect(deployerWallet).toggleSupplier(supplierId, {
+              gasLimit: 5000000,
+            })
+          ).wait(),
+        ).to.rejected;
+      });
+
+      it('should toggle the supplier state', async () => {
+        expect(await market.isSupplierEnabled(supplierId)).to.false;
+        await (
+          await market.connect(supplierOwnerWallet).toggleSupplier(supplierId)
+        ).wait();
+        expect(await market.isSupplierEnabled(supplierId)).to.true;
+      });
+    });
+
+    describe('#changeSigner(bytes32,address)', () => {
+      it('should throw if called not by a owner', async () => {
+        await expect(
+          (
+            await market
+              .connect(deployerWallet)
+              .changeSigner(supplierId, deployerWallet.address, {
+                gasLimit: 5000000,
+              })
+          ).wait(),
+        ).to.rejected;
+      });
+
+      it('should change the supplier signer', async () => {
+        let supplier = await market.suppliers(supplierId);
+        expect(supplier.signer).to.eq(supplierSignerWallet.address);
+        await (
+          await market
+            .connect(supplierOwnerWallet)
+            .changeSigner(supplierId, deployerWallet.address)
+        ).wait();
+        supplier = await market.suppliers(supplierId);
+        expect(supplier.signer).to.eq(deployerWallet.address);
+      });
+    });
+
+    describe('#register(bytes32,address)', () => {
+      it('should register the supplier', async () => {
+        const supplier = await market.suppliers(supplierId);
+        expect(supplier.id).to.eq(supplierId);
+      });
+
+      it('should throw on attempt to register twice', async () => {
+        await expect(
+          (
+            await market
+              .connect(supplierOwnerWallet)
+              .register(supplierSalt, supplierSignerWallet.address, {
+                gasLimit: 5000000,
+              })
+          ).wait(),
+        ).to.rejected; //revertedWithCustomError(market, 'SupplierRegistered');
+      });
+    });
+  });
+
   describe('DealsRegistry', () => {
+    let supplierId: string;
     let offer: Offer;
+    let offerNotRegistered: Offer;
 
     before(async () => {
+      const supplierSalt = randomId();
+      supplierId = createSupplierId(supplierOwnerWallet.address, supplierSalt);
+
+      await registerSupplier(
+        market,
+        supplierSalt,
+        supplierOwnerWallet,
+        supplierSignerWallet,
+        lif,
+      );
+
       offer = await buildRandomOffer(
-        supplierWallet,
+        supplierId,
+        supplierSignerWallet,
+        'Market',
+        '1',
+        (
+          await market.provider.getNetwork()
+        ).chainId,
+        market.address,
+        erc20.address,
+      );
+
+      offerNotRegistered = await buildRandomOffer(
+        randomId(),
+        supplierSignerWallet,
         'Market',
         '1',
         (
@@ -135,74 +307,140 @@ describe('Market contract', () => {
       );
     });
 
-    it('should throw if invalid payment options provided', async () => {
-      await expect(
-        (
+    describe('#deal(**)', () => {
+      it('should throw if invalid payment options provided', async () => {
+        await expect(
+          (
+            await market
+              .connect(buyerWallet)
+              .deal(offer.payload, [], offer.payment[0].id, [offer.signature], {
+                gasLimit: 5000000,
+              })
+          ).wait(),
+        ).to.rejected; //revertedWithCustomError(market, 'InvalidPaymentOptions');
+      });
+
+      it('should throw if invalid payment option Id provided', async () => {
+        await expect(
+          (
+            await market
+              .connect(buyerWallet)
+              .deal(offer.payload, offer.payment, constants.HashZero, [offer.signature], {
+                gasLimit: 5000000,
+              })
+          ).wait(),
+        ).to.rejected; //revertedWithCustomError(market, 'InvalidPaymentId');
+      });
+
+      it('should create a deal', async () => {
+        await (
+          await erc20.connect(buyerWallet).approve(market.address, offer.payment[0].price)
+        ).wait();
+        const balanceOfBuyer = await erc20.balanceOf(buyerWallet.address);
+        const balanceOfMarket = await erc20.balanceOf(market.address);
+
+        const tx = await market
+          .connect(buyerWallet)
+          .deal(offer.payload, offer.payment, offer.payment[0].id, [offer.signature]);
+        await tx.wait();
+        await expect(tx)
+          .to.emit(market, 'DealCreated')
+          .withArgs(offer.payload.id, buyerWallet.address);
+
+        const {
+          offer: contractOffer,
+          price,
+          asset,
+          status,
+        } = await market.deals(offer.payload.id);
+        structEqual(contractOffer, offer.payload);
+        expect(price).to.eq(offer.payment[0].price);
+        expect(asset).to.eq(offer.payment[0].asset);
+        expect(status).to.eq(0);
+
+        expect(await erc20.balanceOf(buyerWallet.address)).to.eq(
+          balanceOfBuyer.sub(offer.payment[0].price),
+        );
+        expect(await erc20.balanceOf(market.address)).to.eq(
+          balanceOfMarket.add(offer.payment[0].price),
+        );
+      });
+
+      it('should throw if attempting to create the same deal', async () => {
+        await expect(
+          (
+            await market
+              .connect(buyerWallet)
+              .deal(
+                offer.payload,
+                offer.payment,
+                offer.payment[0].id,
+                [offer.signature],
+                {
+                  gasLimit: 5000000,
+                },
+              )
+          ).wait(),
+        ).to.rejected; //revertedWithCustomError(market, 'DealExists');
+      });
+
+      it('should throw if supplier of the offer is not registered', async () => {
+        await expect(
+          (
+            await market
+              .connect(buyerWallet)
+              .deal(
+                offerNotRegistered.payload,
+                offerNotRegistered.payment,
+                offerNotRegistered.payment[0].id,
+                [offerNotRegistered.signature],
+                {
+                  gasLimit: 5000000,
+                },
+              )
+          ).wait(),
+        ).to.rejected; //revertedWithCustomError(market, 'InvalidSupplier');
+      });
+
+      it('should throw if invalid signature provided', async () => {
+        await expect(
+          (
+            await market.connect(buyerWallet).deal(
+              offer.payload,
+              offer.payment,
+              offer.payment[0].id,
+              [offerNotRegistered.signature], // Invalid
+              {
+                gasLimit: 5000000,
+              },
+            )
+          ).wait(),
+        ).to.rejected; //revertedWithCustomError(market, 'InvalidOfferSignature');
+      });
+
+      it('should throw if supplier of the offer is disabled', async () => {
+        await (
           await market
-            .connect(buyerWallet)
-            .deal(offer.payload, [], offer.payment[0].id, [offer.signature], {
-              gasLimit: 5000000,
-            })
-        ).wait(),
-      ).to.rejected; //revertedWithCustomError(market, 'InvalidPaymentOptions');
-    });
-
-    it('should throw if invalid payment option Id provided', async () => {
-      await expect(
-        (
-          await market
-            .connect(buyerWallet)
-            .deal(offer.payload, offer.payment, constants.HashZero, [offer.signature], {
-              gasLimit: 5000000,
-            })
-        ).wait(),
-      ).to.rejected; //revertedWithCustomError(market, 'InvalidPaymentId');
-    });
-
-    it('should create a deal', async () => {
-      await (
-        await erc20.connect(buyerWallet).approve(market.address, offer.payment[0].price)
-      ).wait();
-      const balanceOfBuyer = await erc20.balanceOf(buyerWallet.address);
-      const balanceOfMarket = await erc20.balanceOf(market.address);
-
-      const tx = await market
-        .connect(buyerWallet)
-        .deal(offer.payload, offer.payment, offer.payment[0].id, [offer.signature]);
-      await tx.wait();
-      await expect(tx)
-        .to.emit(market, 'DealCreated')
-        .withArgs(offer.payload.id, buyerWallet.address);
-
-      const {
-        offer: contractOffer,
-        price,
-        asset,
-        status,
-      } = await market.deals(offer.payload.id);
-      structEqual(contractOffer, offer.payload);
-      expect(price).to.eq(offer.payment[0].price);
-      expect(asset).to.eq(offer.payment[0].asset);
-      expect(status).to.eq(0);
-
-      expect(await erc20.balanceOf(buyerWallet.address)).to.eq(
-        balanceOfBuyer.sub(offer.payment[0].price),
-      );
-      expect(await erc20.balanceOf(market.address)).to.eq(
-        balanceOfMarket.add(offer.payment[0].price),
-      );
-    });
-
-    it('should throw if attempting to create the same deal', async () => {
-      await expect(
-        (
-          await market
-            .connect(buyerWallet)
-            .deal(offer.payload, offer.payment, offer.payment[0].id, [offer.signature], {
-              gasLimit: 5000000,
-            })
-        ).wait(),
-      ).to.rejected; //revertedWithCustomError(market, 'DealExists');
+            .connect(supplierOwnerWallet)
+            .toggleSupplier(offer.payload.supplierId)
+        ).wait();
+        expect(await market.isSupplierEnabled(offer.payload.supplierId)).to.false;
+        await expect(
+          (
+            await market
+              .connect(buyerWallet)
+              .deal(
+                offer.payload,
+                offer.payment,
+                offer.payment[0].id,
+                [offer.signature],
+                {
+                  gasLimit: 5000000,
+                },
+              )
+          ).wait(),
+        ).to.rejected; //revertedWithCustomError(market, 'DisabledSupplier');
+      });
     });
   });
 });
