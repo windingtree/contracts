@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { HardhatUserConfig } from 'hardhat/config.js';
 import '@matterlabs/hardhat-zksync-toolbox';
 import '@typechain/hardhat';
+import './tasks';
 
 const zkSyncTestnet =
   process.env.NODE_ENV === 'test'

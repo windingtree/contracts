@@ -10,11 +10,10 @@ import "./utils/SignatureUtils.sol";
 
 abstract contract DealsRegistry is Context, EIP712 {
   using SignatureChecker for address;
-  using StringUtils for string;
   using SignatureUtils for bytes;
 
   bytes32 public constant PAYMENT_OPTION_TYPE_HASH =
-    keccak256("PaymentOption(string id,uint256 price,address asset)");
+    keccak256("PaymentOption(bytes32 id,uint256 price,address asset)");
 
   bytes32 public constant CANCEL_OPTION_TYPE_HASH =
     keccak256("CancelOption(uint256 time,uint256 penalty)");
@@ -25,15 +24,21 @@ abstract contract DealsRegistry is Context, EIP712 {
       "Offer(bytes32 id,uint256 expire,bytes32 supplierId,uint256 chainId,bytes32 requestHash,bytes32 optionsHash,bytes32 paymentHash,bytes32 cancelHash,bool transferable,uint256 checkIn)"
     );
 
+  /**
+   * @dev Payment option
+   */
   struct PaymentOption {
     /// @dev Unique paymentOptions option Id
-    string id;
+    bytes32 id;
     /// @dev Asset price in WEI
     uint256 price;
     /// @dev ERC20 asset contract address
     address asset;
   }
 
+  /**
+   * @dev Deal cancellation option
+   */
   struct CancelOption {
     /// @dev Seconds before checkIn
     uint256 time;
@@ -41,6 +46,9 @@ abstract contract DealsRegistry is Context, EIP712 {
     uint256 penalty;
   }
 
+  /**
+   * @dev Offer payload
+   */
   struct Offer {
     /// @dev Offer Id
     bytes32 id;
@@ -64,6 +72,9 @@ abstract contract DealsRegistry is Context, EIP712 {
     uint256 checkIn;
   }
 
+  /**
+   * @dev Deal status
+   */
   enum DealStatus {
     Created, // Just created
     Claimed, // Claimed by the supplier
@@ -72,30 +83,40 @@ abstract contract DealsRegistry is Context, EIP712 {
     Disputed // Dispute started
   }
 
+  /**
+   * @dev Deal storage struct
+   */
   struct Deal {
+    /// @dev Offer payload
     Offer offer;
+    /// @dev Deal price
     uint256 price;
+    /// @dev Deal asset
     address asset;
+    /// @dev Current deal status
     DealStatus status;
   }
 
   /// @dev Mapping of an offer Id on a Deal
-  mapping(bytes32 => Deal) private _deals;
+  mapping(bytes32 => Deal) public deals;
 
   /// @dev Emitted when a Deal is created by a buyer
   event DealCreated(bytes32 indexed offerId, address indexed buyer);
 
-  /// @dev Thrown when a user attempts to make a deal using an offer with an invalid signature
+  /// @dev Thrown when a user attempts to create a deal using an offer with an invalid signature
   error InvalidOfferSignature();
 
-  /// @dev Thrown when a user attempts to make a deal providing an invalid payment options
+  /// @dev Thrown when a user attempts to create an already existing Deal
+  error DealExists();
+
+  /// @dev Thrown when a user attempts to create a deal providing an invalid payment options
   error InvalidPaymentOptions();
 
-  /// @dev Thrown when a user attempts to make a deal providing an invalid payment option Id
+  /// @dev Thrown when a user attempts to create a deal providing an invalid payment option Id
   error InvalidPaymentId();
 
   /// @dev Thrown when a Deal funds transfer is failed
-  error DealTransferFailed();
+  error DealFundsTransferFailed();
 
   /**
    * @dev DealsRegistry constructor
@@ -104,11 +125,15 @@ abstract contract DealsRegistry is Context, EIP712 {
    */
   constructor(string memory name, string memory version) EIP712(name, version) {}
 
+  function hash(bytes32[] memory hashes) internal pure returns (bytes32) {
+    return keccak256(abi.encodePacked(hashes));
+  }
+
   /// @dev Creates a hash of a PaymentOption
   function hash(PaymentOption memory paymentOptions) internal pure returns (bytes32) {
     return
       keccak256(
-        abi.encode(
+        abi.encodePacked(
           PAYMENT_OPTION_TYPE_HASH,
           paymentOptions.id,
           paymentOptions.price,
@@ -119,7 +144,8 @@ abstract contract DealsRegistry is Context, EIP712 {
 
   /// @dev Creates a hash of a CancelOption
   function hash(CancelOption memory cancel) internal pure returns (bytes32) {
-    return keccak256(abi.encode(CANCEL_OPTION_TYPE_HASH, cancel.time, cancel.penalty));
+    return
+      keccak256(abi.encodePacked(CANCEL_OPTION_TYPE_HASH, cancel.time, cancel.penalty));
   }
 
   /// @dev Creates a hash of an array of PaymentOption
@@ -130,7 +156,7 @@ abstract contract DealsRegistry is Context, EIP712 {
       hashes[i] = hash(paymentOptions[i]);
     }
 
-    return keccak256(abi.encodePacked(hashes));
+    return hash(hashes);
   }
 
   /// @dev Creates a hash of an array of CancelOption
@@ -141,7 +167,7 @@ abstract contract DealsRegistry is Context, EIP712 {
       hashes[i] = hash(cancel[i]);
     }
 
-    return keccak256(abi.encodePacked(hashes));
+    return hash(hashes);
   }
 
   /// @dev Creates a hash of an Offer
@@ -176,14 +202,22 @@ abstract contract DealsRegistry is Context, EIP712 {
   function deal(
     Offer memory offer,
     PaymentOption[] memory paymentOptions,
-    string memory paymentId,
+    bytes32 paymentId,
     bytes[] memory signs
-  ) public {
+  ) external {
     address buyer = _msgSender();
-    bytes32 offerHash = hash(offer);
 
-    if (!buyer.isValidSignatureNow(offerHash, signs[0])) {
-      revert InvalidOfferSignature();
+    // bytes32 offerHash = _hashTypedDataV4(hash(offer));
+
+    // @todo Create supplier registry
+    // @todo Get supplier signer address from the supplier registry
+
+    // if (!supplier.isValidSignatureNow(offerHash, signs[0])) {
+    //   revert InvalidOfferSignature();
+    // }
+
+    if (deals[offer.id].offer.id == offer.id) {
+      revert DealExists();
     }
 
     bytes32 paymentHash = hash(paymentOptions);
@@ -196,7 +230,7 @@ abstract contract DealsRegistry is Context, EIP712 {
     address asset;
 
     for (uint256 i = 0; i < paymentOptions.length; i++) {
-      if (paymentOptions[i].id.equal(paymentId)) {
+      if (paymentOptions[i].id == paymentId) {
         price = paymentOptions[i].price;
         asset = paymentOptions[i].asset;
         break;
@@ -213,10 +247,10 @@ abstract contract DealsRegistry is Context, EIP712 {
       (uint8 v, bytes32 r, bytes32 s) = signs[1].split();
       IERC20(asset).permit(buyer, address(this), price, offer.expire, v, r, s);
     } else if (!IERC20(asset).transferFrom(buyer, address(this), price)) {
-      revert DealTransferFailed();
+      revert DealFundsTransferFailed();
     }
 
-    _deals[offer.id] = Deal(offer, price, asset, DealStatus.Created);
+    deals[offer.id] = Deal(offer, price, asset, DealStatus.Created);
 
     emit DealCreated(offer.id, buyer);
 

@@ -23,6 +23,8 @@
     "./src/**/*.ts",
     "./test/**/*.ts",
     "./typechain/**/*.ts",
-    "./hardhat.config.ts"
+    "./hardhat.config.ts",
+    "./deploy/**/*.ts",
+    "./tasks/**/*.ts"
   ]
 }

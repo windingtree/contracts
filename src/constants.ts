@@ -1,9 +1,9 @@
 // ethers.utils.solidityKeccak256(
 //   ['string'],
-//   ['PaymentOption(string id,uint256 price,address asset)'],
+//   ['PaymentOption(bytes32 id,uint256 price,address asset)'],
 // );
 export const PAYMENT_OPTION_TYPE_HASH =
-  '0x21e94f50acfd0299dfc65a494d626baf55cb6ab601752f1da4b3aa16f82fdb99';
+  '0x2f8fc0b3ad3f58f6deb367673d38e4112a3c8c64de033c5b780b84ef8f67cde6';
 
 // ethers.utils.solidityKeccak256(
 //   ['string'],
