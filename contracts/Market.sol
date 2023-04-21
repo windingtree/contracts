@@ -17,4 +17,6 @@ contract Market is ERC1155Token, DealsRegistry {
     // Generate uri that depends on the id
     return "";
   }
+
+  uint256[50] private __gap;
 }
