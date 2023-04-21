@@ -270,4 +270,6 @@ abstract contract DealsRegistry is Context, EIP712 {
     address asset,
     bytes[] memory signs
   ) internal virtual {}
+
+  uint256[50] private __gap;
 }
