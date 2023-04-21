@@ -65,6 +65,9 @@ export const randomId = (): string =>
     ],
   );
 
+export const createSupplierId = (address: string, salt: string): string =>
+  utils.solidityKeccak256(['address', 'bytes32'], [address, salt]);
+
 export const hashObject = (request: unknown): string =>
   utils.solidityKeccak256(['string'], [JSON.stringify(request)]);
 
@@ -175,6 +178,7 @@ export const offerEip712Types: Record<string, Array<TypedDataField>> = {
 };
 
 export const buildRandomOffer = async (
+  supplierId: string,
   signer: Wallet,
   name: string,
   version: string,
@@ -210,7 +214,7 @@ export const buildRandomOffer = async (
   const offerPayload: OfferPayload = {
     id: randomId(),
     expire: BigNumber.from(Math.round(Date.now() / 1000) + 20000),
-    supplierId: randomId(),
+    supplierId: supplierId,
     chainId: BigNumber.from(270),
     requestHash: hashObject(request),
     optionsHash: hashObject({}),

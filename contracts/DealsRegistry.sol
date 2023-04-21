@@ -4,11 +4,18 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import "./SuppliersRegistry.sol";
 import "./utils/IERC20.sol";
 import "./utils/StringUtils.sol";
 import "./utils/SignatureUtils.sol";
 
-abstract contract DealsRegistry is Context, EIP712 {
+/**
+ * @title DealsRegistry
+ * @dev A smart contract for creating and managing deals between buyers and sellers.
+ * The contract stores offers made by suppliers, and allows buyers to create deals based on those offers.
+ * Each deal specifies the payment and cancellation terms, and can be tracked on-chain using its unique Id.
+ */
+abstract contract DealsRegistry is Context, EIP712, SuppliersRegistry {
   using SignatureChecker for address;
   using SignatureUtils for bytes;
 
@@ -26,49 +33,49 @@ abstract contract DealsRegistry is Context, EIP712 {
 
   /**
    * @dev Payment option
+   * @param id Unique ID of the payment option
+   * @param price The price of the asset in wei
+   * @param asset The address of the ERC20 token used for payment
    */
   struct PaymentOption {
-    /// @dev Unique paymentOptions option Id
     bytes32 id;
-    /// @dev Asset price in WEI
     uint256 price;
-    /// @dev ERC20 asset contract address
     address asset;
   }
 
   /**
    * @dev Deal cancellation option
+   * @param time The number of seconds before checkIn
+   * @param penalty The percentage of the total sum to be paid as a penalty if the deal is cancelled
    */
   struct CancelOption {
-    /// @dev Seconds before checkIn
     uint256 time;
-    /// @dev Percents of total sum
     uint256 penalty;
   }
 
   /**
    * @dev Offer payload
+   * @param id The unique ID of the offer
+   * @param expire The time when the offer expires (in seconds since the Unix epoch)
+   * @param supplierId The unique ID of the supplier offering the deal
+   * @param chainId The ID of the network chain where the deal is to be executed
+   * @param requestHash The hash of the request made by the buyer
+   * @param optionsHash The hash of the payment and cancellation options for the deal
+   * @param paymentHash The hash of the payment option used for the deal
+   * @param cancelHash The hash of the cancellation option used for the deal
+   * @param transferable Indicates whether the deal NFT is transferable or not
+   * @param checkIn The check-in time for the deal (in seconds since the Unix epoch)
    */
   struct Offer {
-    /// @dev Offer Id
     bytes32 id;
-    /// @dev Expiration time
     uint256 expire;
-    /// @dev Unique supplier Id registered on the protocol contract
     bytes32 supplierId;
-    /// @dev Target network chain Id
     uint256 chainId;
-    /// @dev <keccak256(encode(request))>
     bytes32 requestHash;
-    /// @dev <keccak256(encode(offer.options))>
     bytes32 optionsHash;
-    /// @dev <keccak256(encode(offer.payment))>
     bytes32 paymentHash;
-    /// @dev <keccak256(encode(offer.cancel(sorted by time DESC) || []))>
     bytes32 cancelHash;
-    /// @dev makes the deal NFT transferable or not
     bool transferable;
-    /// @dev check-in time in seconds
     uint256 checkIn;
   }
 
@@ -85,22 +92,26 @@ abstract contract DealsRegistry is Context, EIP712 {
 
   /**
    * @dev Deal storage struct
+   * @param offer Offer payload
+   * @param price Deal price
+   * @param asset Deal asset
+   * @param status Current deal status
    */
   struct Deal {
-    /// @dev Offer payload
     Offer offer;
-    /// @dev Deal price
     uint256 price;
-    /// @dev Deal asset
     address asset;
-    /// @dev Current deal status
     DealStatus status;
   }
 
   /// @dev Mapping of an offer Id on a Deal
   mapping(bytes32 => Deal) public deals;
 
-  /// @dev Emitted when a Deal is created by a buyer
+  /**
+   * @dev Emitted when a Deal is created by a buyer
+   * @param offerId The Id of the offer used to create the deal
+   * @param buyer The address of the buyer who created the deal
+   */
   event DealCreated(bytes32 indexed offerId, address indexed buyer);
 
   /// @dev Thrown when a user attempts to create a deal using an offer with an invalid signature
@@ -118,13 +129,25 @@ abstract contract DealsRegistry is Context, EIP712 {
   /// @dev Thrown when a Deal funds transfer is failed
   error DealFundsTransferFailed();
 
+  /// @dev Thrown when the supplier of the offer is not found
+  error InvalidSupplier();
+
+  /// @dev Thrown when the supplier of the offer is not enabled
+  error DisabledSupplier();
+
   /**
    * @dev DealsRegistry constructor
    * @param name EIP712 contract name
    * @param version EIP712 contract version
    */
-  constructor(string memory name, string memory version) EIP712(name, version) {}
+  constructor(
+    string memory name,
+    string memory version,
+    address asset,
+    uint256 minDeposit
+  ) EIP712(name, version) SuppliersRegistry(asset, minDeposit) {}
 
+  /// @dev Create a has of bytes32 array
   function hash(bytes32[] memory hashes) internal pure returns (bytes32) {
     return keccak256(abi.encodePacked(hashes));
   }
@@ -160,11 +183,11 @@ abstract contract DealsRegistry is Context, EIP712 {
   }
 
   /// @dev Creates a hash of an array of CancelOption
-  function hash(CancelOption[] memory cancel) internal pure returns (bytes32) {
-    bytes32[] memory hashes = new bytes32[](cancel.length);
+  function hash(CancelOption[] memory cancelOptions) internal pure returns (bytes32) {
+    bytes32[] memory hashes = new bytes32[](cancelOptions.length);
 
-    for (uint256 i = 0; i < cancel.length; i++) {
-      hashes[i] = hash(cancel[i]);
+    for (uint256 i = 0; i < cancelOptions.length; i++) {
+      hashes[i] = hash(cancelOptions[i]);
     }
 
     return hash(hashes);
@@ -207,21 +230,34 @@ abstract contract DealsRegistry is Context, EIP712 {
   ) external {
     address buyer = _msgSender();
 
-    // bytes32 offerHash = _hashTypedDataV4(hash(offer));
+    bytes32 offerHash = _hashTypedDataV4(hash(offer));
+    Supplier storage supplier = suppliers[offer.supplierId];
 
-    // @todo Create supplier registry
-    // @todo Get supplier signer address from the supplier registry
+    // Supplier who created an offer must be registered
+    if (supplier.signer == address(0)) {
+      revert InvalidSupplier();
+    }
 
-    // if (!supplier.isValidSignatureNow(offerHash, signs[0])) {
-    //   revert InvalidOfferSignature();
-    // }
+    // Checking ECDSA/AA signature is valid
+    if (!supplier.signer.isValidSignatureNow(offerHash, signs[0])) {
+      revert InvalidOfferSignature();
+    }
 
+    // Not-enabled suppliers are not allowed to accept deals
+    // So, we cannot allow to create such a deal
+    if (!supplier.enabled) {
+      revert DisabledSupplier();
+    }
+
+    // Deal can be created only once
     if (deals[offer.id].offer.id == offer.id) {
       revert DealExists();
     }
 
     bytes32 paymentHash = hash(paymentOptions);
 
+    // payment options provided with argument must be the same
+    // as signed in the offer
     if (paymentHash != offer.paymentHash) {
       revert InvalidPaymentOptions();
     }
@@ -230,6 +266,7 @@ abstract contract DealsRegistry is Context, EIP712 {
     address asset;
 
     for (uint256 i = 0; i < paymentOptions.length; i++) {
+      // Payment id must be one of the defined in payment options
       if (paymentOptions[i].id == paymentId) {
         price = paymentOptions[i].price;
         asset = paymentOptions[i].asset;
@@ -243,20 +280,33 @@ abstract contract DealsRegistry is Context, EIP712 {
 
     _beforeDealCreated(offer, price, asset, signs);
 
+    // Creating the deal before any external call to avoid reentrancy
+    deals[offer.id] = Deal(offer, price, asset, DealStatus.Created);
+
     if (signs.length > 1) {
+      // Use permit function to transfer tokens from the sender to the contract
       (uint8 v, bytes32 r, bytes32 s) = signs[1].split();
       IERC20(asset).permit(buyer, address(this), price, offer.expire, v, r, s);
-    } else if (!IERC20(asset).transferFrom(buyer, address(this), price)) {
-      revert DealFundsTransferFailed();
+    } else {
+      // Use transferFrom function to transfer tokens from the sender to the contract
+      if (!IERC20(asset).transferFrom(buyer, address(this), price)) {
+        revert DealFundsTransferFailed();
+      }
     }
-
-    deals[offer.id] = Deal(offer, price, asset, DealStatus.Created);
 
     emit DealCreated(offer.id, buyer);
 
     _afterDealCreated(offer, price, asset, signs);
   }
 
+  /**
+   * @dev Hook function that runs before a new deal is created.
+   * Allows inheriting smart contracts to perform custom logic.
+   * @param offer The offer used to create the deal
+   * @param price The price of the asset in wei
+   * @param asset The address of the ERC20 token used for payment
+   * @param signs An array of signatures authorizing the creation of the deal
+   */
   function _beforeDealCreated(
     Offer memory offer,
     uint256 price,
@@ -264,6 +314,14 @@ abstract contract DealsRegistry is Context, EIP712 {
     bytes[] memory signs
   ) internal virtual {}
 
+  /**
+   * @dev Hook function that runs after a new deal is created.
+   * Allows inheriting smart contracts to perform custom logic.
+   * @param offer The offer used to create the deal
+   * @param price The price of the asset in wei
+   * @param asset The address of the ERC20 token used for payment
+   * @param signs An array of signatures authorizing the creation of the deal
+   */
   function _afterDealCreated(
     Offer memory offer,
     uint256 price,

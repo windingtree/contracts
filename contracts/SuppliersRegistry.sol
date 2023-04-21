@@ -5,6 +5,10 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import "./utils/IERC20.sol";
 import "./utils/SignatureUtils.sol";
 
+/**
+ * @title SuppliersRegistry
+ * @dev A smart contract for registering and managing suppliers who can participate in deals.
+ */
 abstract contract SuppliersRegistry is Context {
   using SignatureUtils for bytes;
 
@@ -16,15 +20,15 @@ abstract contract SuppliersRegistry is Context {
 
   /**
    * @dev Supplier storage struct
+   * @param id Unique supplier Id
+   * @param owner Owner of the supplier entity
+   * @param enabled The supplier entity activity flag
+   * @param signer Offers signer
    */
   struct Supplier {
-    /// @dev Unique supplier Id
     bytes32 id;
-    /// @dev Owner of the supplier entity
     address owner;
-    /// @dev The supplier entity activity flag
     bool enabled;
-    /// @dev Offers signer
     address signer;
   }
 
@@ -181,7 +185,15 @@ abstract contract SuppliersRegistry is Context {
     if (sign.length > 0) {
       // Use permit function to transfer tokens from the sender to the contract
       (uint8 v, bytes32 r, bytes32 s) = sign.split();
-      IERC20(asset).permit(supplierOwner, address(this), value, block.timestamp + 10000, v, r, s);
+      IERC20(asset).permit(
+        supplierOwner,
+        address(this),
+        value,
+        block.timestamp + 10000,
+        v,
+        r,
+        s
+      );
     } else {
       // Use transferFrom function to transfer tokens from the sender to the contract
       if (!asset.transferFrom(_msgSender(), address(this), value)) {
@@ -207,7 +219,7 @@ abstract contract SuppliersRegistry is Context {
    * - can be called by the supplier owner only
    */
   function withdrawDeposit(bytes32 id, uint256 value) external onlySupplierOwner(id) {
-    if(deposits[id] < value) {
+    if (deposits[id] < value) {
       revert DepositNotEnough();
     }
 

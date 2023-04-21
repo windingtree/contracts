@@ -8,8 +8,10 @@ contract Market is ERC1155Token, DealsRegistry {
   constructor(
     address owner,
     string memory name,
-    string memory version
-  ) DealsRegistry(name, version) {
+    string memory version,
+    address asset,
+    uint256 minDeposit
+  ) DealsRegistry(name, version, asset, minDeposit) {
     transferOwnership(owner);
   }
 
