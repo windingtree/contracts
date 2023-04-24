@@ -5,21 +5,22 @@
 import { expect } from 'chai';
 import { Wallet, Provider } from 'zksync-web3';
 import * as hre from 'hardhat';
-import { constants } from 'ethers';
+import { BigNumber, constants } from 'ethers';
 import { Deployer } from '@matterlabs/hardhat-zksync-deploy';
 import richWallets from '../../network/rich-wallets.json';
-import { Market, MockERC20Dec18 } from '../../typechain';
+import { Market, MockERC20Dec18, MockERC20Dec18Permit } from '../../typechain';
 import {
   structEqual,
   Offer,
   buildRandomOffer,
   randomId,
   createSupplierId,
+  createPermitSignature,
 } from './utils';
 
 const eip712name = 'Market';
 const eip712version = '1';
-const minDeposit = '1000000000000000000000';
+const minDeposit = BigNumber.from('1000000000000000000000');
 
 const createWallets = (provider: Provider): Wallet[] =>
   richWallets.map((account) => new Wallet(account.privateKey, provider));
@@ -38,17 +39,31 @@ const deployErc20 = async (
   return contract;
 };
 
+const deployErc20Permit = async (
+  deployer: Deployer,
+  owner: string,
+  symbol: string,
+): Promise<MockERC20Dec18Permit> => {
+  const artifact = await deployer.loadArtifact('MockERC20Dec18Permit');
+  const contract = (await deployer.deploy(artifact, [
+    symbol,
+    symbol,
+    owner,
+  ])) as MockERC20Dec18Permit;
+  return contract;
+};
+
 const deployMarket = async (
   deployer: Deployer,
   owner: string,
-  erc20: MockERC20Dec18,
+  lif: MockERC20Dec18Permit,
 ): Promise<Market> => {
   const artifact = await deployer.loadArtifact('Market');
   const contract = (await deployer.deploy(artifact, [
     owner,
     eip712name,
     eip712version,
-    erc20.address,
+    lif.address,
     minDeposit,
   ])) as Market;
   return contract;
@@ -59,7 +74,7 @@ const registerSupplier = async (
   supplierSalt: string,
   supplierOwnerWallet: Wallet,
   supplierSignerWallet: Wallet,
-  lif: MockERC20Dec18,
+  lif?: MockERC20Dec18Permit,
   enable = true,
 ) => {
   await (
@@ -74,12 +89,16 @@ const registerSupplier = async (
     enabled: false,
     signer: supplierSignerWallet.address,
   });
-  await (
-    await lif.connect(supplierOwnerWallet).approve(market.address, minDeposit)
-  ).wait();
-  await (
-    await market.connect(supplierOwnerWallet).addDeposit(supplierId, minDeposit, '0x')
-  ).wait();
+  if (lif) {
+    await (
+      await lif.connect(supplierOwnerWallet).approve(market.address, minDeposit)
+    ).wait();
+    await (
+      await market
+        .connect(supplierOwnerWallet)
+        ['addDeposit(bytes32,uint256)'](supplierId, minDeposit)
+    ).wait();
+  }
   if (enable) {
     await (await market.connect(supplierOwnerWallet).toggleSupplier(supplierId)).wait();
   }
@@ -95,7 +114,7 @@ describe('Market contract', () => {
   let deployer: Deployer;
   let market: Market;
   let erc20: MockERC20Dec18;
-  let lif: MockERC20Dec18;
+  let lif: MockERC20Dec18Permit;
 
   before(() => {
     provider = Provider.getDefaultProvider();
@@ -111,7 +130,7 @@ describe('Market contract', () => {
 
   before(async () => {
     erc20 = await deployErc20(deployer, deployerWallet.address, 'STABLE');
-    lif = await deployErc20(deployer, deployerWallet.address, 'LIF');
+    lif = await deployErc20Permit(deployer, deployerWallet.address, 'LIF');
     market = await deployMarket(deployer, deployerWallet.address, lif);
     await (await erc20.mint(buyerWallet.address, '1000000000000000000000000')).wait();
     await (
@@ -195,11 +214,7 @@ describe('Market contract', () => {
       );
     });
 
-    it('should be initially disabled', async () => {
-      expect(await market.isSupplierEnabled(supplierId)).to.false;
-    });
-
-    describe('#toggleSupplier(bytes32)', () => {
+    describe('#toggleSupplier(bytes32); #isSupplierEnabled(bytes32)', () => {
       it('should throw if called not by a owner', async () => {
         await expect(
           (
@@ -251,6 +266,10 @@ describe('Market contract', () => {
         expect(supplier.id).to.eq(supplierId);
       });
 
+      it('should be initially disabled', async () => {
+        expect(await market.isSupplierEnabled(supplierId)).to.false;
+      });
+
       it('should throw on attempt to register twice', async () => {
         await expect(
           (
@@ -261,6 +280,122 @@ describe('Market contract', () => {
               })
           ).wait(),
         ).to.rejected; //revertedWithCustomError(market, 'SupplierRegistered');
+      });
+    });
+
+    describe('#addDeposit(bytes32,uit256,bytes); #balanceOfSupplier(bytes32)', () => {
+      it('should throw if deposit value to small', async () => {
+        const supplierSalt = randomId();
+        const supplierId = createSupplierId(supplierOwnerWallet.address, supplierSalt);
+
+        await registerSupplier(
+          market,
+          supplierSalt,
+          supplierOwnerWallet,
+          supplierSignerWallet,
+          undefined,
+          false,
+        );
+
+        const notEnoughValue = minDeposit.sub(BigNumber.from('1'));
+
+        await (
+          await lif.connect(supplierOwnerWallet).approve(market.address, notEnoughValue)
+        ).wait();
+        await expect(
+          (
+            await market
+              .connect(supplierOwnerWallet)
+              ['addDeposit(bytes32,uint256)'](supplierId, notEnoughValue, {
+                gasLimit: 5000000,
+              })
+          ).wait(),
+        ).to.rejected;
+      });
+
+      it('should throw if tokens not approved', async () => {
+        await expect(
+          (
+            await market
+              .connect(supplierOwnerWallet)
+              ['addDeposit(bytes32,uint256)'](supplierId, '1', {
+                gasLimit: 5000000,
+              })
+          ).wait(),
+        ).to.rejected;
+      });
+
+      it('should add deposit', async () => {
+        expect(await market.balanceOfSupplier(supplierId)).to.eq(minDeposit);
+        const value = BigNumber.from('1');
+        await (
+          await lif.connect(supplierOwnerWallet).approve(market.address, value)
+        ).wait();
+        await (
+          await market
+            .connect(supplierOwnerWallet)
+            ['addDeposit(bytes32,uint256)'](supplierId, value)
+        ).wait();
+        expect(await market.balanceOfSupplier(supplierId)).to.eq(minDeposit.add(value));
+      });
+
+      it.skip('should throw if invalid permit signature provided', async () => {
+        //
+      });
+
+      it.skip('should add deposit using permit', async () => {
+        const value = BigNumber.from('1');
+        const deadline = Math.floor(Date.now() / 1000) + 3600;
+
+        const signature = await createPermitSignature(
+          supplierOwnerWallet,
+          lif,
+          supplierOwnerWallet.address,
+          market.address,
+          value,
+          deadline,
+        );
+
+        expect(await market.balanceOfSupplier(supplierId)).to.eq(minDeposit);
+        await (
+          await market
+            .connect(supplierOwnerWallet)
+            ['addDeposit(bytes32,uint256,uint256,bytes)'](
+              supplierId,
+              value,
+              deadline,
+              signature,
+              {
+                gasLimit: 5000000,
+              },
+            )
+        ).wait();
+        expect(await market.balanceOfSupplier(supplierId)).to.eq(minDeposit.add(value));
+      });
+    });
+
+    describe('#withdrawDeposit(bytes32,uit256,bytes)', () => {
+      it('should throw if balance not enough', async () => {
+        const balance = await market.balanceOfSupplier(supplierId);
+        await expect(
+          (
+            await market
+              .connect(supplierOwnerWallet)
+              .withdrawDeposit(supplierId, balance.add(BigNumber.from('1')), {
+                gasLimit: 5000000,
+              })
+          ).wait(),
+        ).to.rejected;
+      });
+
+      it('should withdraw deposit', async () => {
+        expect(await market.balanceOfSupplier(supplierId)).to.eq(minDeposit);
+        await (
+          await market
+            .connect(supplierOwnerWallet)
+            .withdrawDeposit(supplierId, minDeposit)
+        ).wait();
+        expect(await market.balanceOfSupplier(supplierId)).to.eq(constants.Zero);
       });
     });
   });
@@ -349,10 +484,12 @@ describe('Market contract', () => {
 
         const {
           offer: contractOffer,
+          buyer,
           price,
           asset,
           status,
         } = await market.deals(offer.payload.id);
+        expect(buyer).to.eq(buyerWallet.address);
         structEqual(contractOffer, offer.payload);
         expect(price).to.eq(offer.payment[0].price);
         expect(asset).to.eq(offer.payment[0].asset);

@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "./SuppliersRegistry.sol";
 import "./utils/IERC20.sol";
-import "./utils/StringUtils.sol";
 import "./utils/SignatureUtils.sol";
 
 /**
@@ -99,6 +98,7 @@ abstract contract DealsRegistry is Context, EIP712, SuppliersRegistry {
    */
   struct Deal {
     Offer offer;
+    address buyer;
     uint256 price;
     address asset;
     DealStatus status;
@@ -153,7 +153,9 @@ abstract contract DealsRegistry is Context, EIP712, SuppliersRegistry {
   }
 
   /// @dev Creates a hash of a PaymentOption
-  function hash(PaymentOption memory paymentOptions) internal pure returns (bytes32) {
+  function hash(
+    PaymentOption memory paymentOptions
+  ) internal pure returns (bytes32) {
     return
       keccak256(
         abi.encodePacked(
@@ -168,11 +170,15 @@ abstract contract DealsRegistry is Context, EIP712, SuppliersRegistry {
   /// @dev Creates a hash of a CancelOption
   function hash(CancelOption memory cancel) internal pure returns (bytes32) {
     return
-      keccak256(abi.encodePacked(CANCEL_OPTION_TYPE_HASH, cancel.time, cancel.penalty));
+      keccak256(
+        abi.encodePacked(CANCEL_OPTION_TYPE_HASH, cancel.time, cancel.penalty)
+      );
   }
 
   /// @dev Creates a hash of an array of PaymentOption
-  function hash(PaymentOption[] memory paymentOptions) internal pure returns (bytes32) {
+  function hash(
+    PaymentOption[] memory paymentOptions
+  ) internal pure returns (bytes32) {
     bytes32[] memory hashes = new bytes32[](paymentOptions.length);
 
     for (uint256 i = 0; i < paymentOptions.length; i++) {
@@ -183,7 +189,9 @@ abstract contract DealsRegistry is Context, EIP712, SuppliersRegistry {
   }
 
   /// @dev Creates a hash of an array of CancelOption
-  function hash(CancelOption[] memory cancelOptions) internal pure returns (bytes32) {
+  function hash(
+    CancelOption[] memory cancelOptions
+  ) internal pure returns (bytes32) {
     bytes32[] memory hashes = new bytes32[](cancelOptions.length);
 
     for (uint256 i = 0; i < cancelOptions.length; i++) {
@@ -222,12 +230,12 @@ abstract contract DealsRegistry is Context, EIP712, SuppliersRegistry {
    *
    * NOTE: `permit` signature can be ECDSA of type only
    */
-  function deal(
+  function _deal(
     Offer memory offer,
     PaymentOption[] memory paymentOptions,
     bytes32 paymentId,
     bytes[] memory signs
-  ) external {
+  ) internal virtual {
     address buyer = _msgSender();
 
     bytes32 offerHash = _hashTypedDataV4(hash(offer));
@@ -281,17 +289,17 @@ abstract contract DealsRegistry is Context, EIP712, SuppliersRegistry {
     _beforeDealCreated(offer, price, asset, signs);
 
     // Creating the deal before any external call to avoid reentrancy
-    deals[offer.id] = Deal(offer, price, asset, DealStatus.Created);
+    deals[offer.id] = Deal(offer, buyer, price, asset, DealStatus.Created);
 
     if (signs.length > 1) {
       // Use permit function to transfer tokens from the sender to the contract
       (uint8 v, bytes32 r, bytes32 s) = signs[1].split();
       IERC20(asset).permit(buyer, address(this), price, offer.expire, v, r, s);
-    } else {
-      // Use transferFrom function to transfer tokens from the sender to the contract
-      if (!IERC20(asset).transferFrom(buyer, address(this), price)) {
-        revert DealFundsTransferFailed();
-      }
+    }
+
+    // Use transferFrom function to transfer tokens from the sender to the contract
+    if (!IERC20(asset).transferFrom(buyer, address(this), price)) {
+      revert DealFundsTransferFailed();
     }
 
     emit DealCreated(offer.id, buyer);

@@ -5,6 +5,7 @@ import {
   CANCEL_OPTION_TYPE_HASH,
   OFFER_TYPE_HASH,
 } from '../../src/constants';
+import { MockERC20Dec18Permit } from '../../typechain';
 
 export const nonces: Record<string, number> = {
   request: 1,
@@ -252,4 +253,58 @@ export const structEqual = (struct: { [k: string]: any }, obj: { [k: string]: an
   for (const key of Object.keys(obj)) {
     expect(obj[key]).to.eq(struct[key]);
   }
+};
+
+export const createPermitSignature = async (
+  signer: Wallet,
+  erc20: MockERC20Dec18Permit,
+  owner: string,
+  spender: string,
+  value: BigNumber,
+  deadline: number,
+  version = '1',
+): Promise<string> => {
+  const nonce = await erc20.nonces(owner);
+  const name = await erc20.name();
+  const chainId = await signer.getChainId();
+
+  return await signer._signTypedData(
+    {
+      name,
+      version,
+      chainId,
+      verifyingContract: erc20.address,
+    },
+    {
+      Permit: [
+        {
+          name: 'owner',
+          type: 'address',
+        },
+        {
+          name: 'spender',
+          type: 'address',
+        },
+        {
+          name: 'value',
+          type: 'uint256',
+        },
+        {
+          name: 'nonce',
+          type: 'uint256',
+        },
+        {
+          name: 'deadline',
+          type: 'uint256',
+        },
+      ],
+    },
+    {
+      owner,
+      spender,
+      value,
+      nonce,
+      deadline,
+    },
+  );
 };
