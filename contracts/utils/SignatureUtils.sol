@@ -13,6 +13,14 @@ library SignatureUtils {
         r := mload(add(signature, 0x20))
         s := mload(add(signature, 0x40))
         v := byte(0, mload(add(signature, 0x60)))
+
+        if eq(v, 0) {
+          v := 27
+        }
+
+        if eq(v, 1) {
+          v := 28
+        }
       }
     } else {
       revert InvalidSignature();
