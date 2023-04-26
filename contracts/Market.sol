@@ -1,27 +1,70 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
-import "./ERC1155Token.sol";
+import "./ERC721Token.sol";
 import "./DealsRegistry.sol";
 
-contract Market is Pausable, DealsRegistry, ERC1155Token {
+/**
+ * @title Market
+ * @dev This contract enables the creation and management of deals
+ * @custom:security-contact security@windingtree.com
+ */
+contract Market is Ownable, Pausable, DealsRegistry, ERC721Token {
+  /// Mapping of tokenId on offer Id
+  mapping(uint256 => bytes32) public tokenOffers;
+
+  /// Throws when NFT transfer is not allowed by offer rule
+  error TokenTransferNotAllowed();
+
+  /**
+   * @dev Constructor that initializes the Market contract with the given arguments
+   * @param owner The owner of the contract
+   * @param name The name of the contract
+   * @param version The version of the contract
+   * @param asset The address of the asset
+   * @param minDeposit The minimum deposit required for the contract
+   */
   constructor(
     address owner,
     string memory name,
     string memory version,
     address asset,
     uint256 minDeposit
-  ) DealsRegistry(name, version, asset, minDeposit) {
+  )
+    DealsRegistry(name, version, asset, minDeposit)
+    ERC721Token("DealToken", "DEAL")
+  {
     transferOwnership(owner);
+  }
+
+  /// Getters
+
+  /**
+   * @dev Returns offerId linked to the token
+   * @param tokenId The ID of the token
+   * @return offerId The ID of the offer linked to the token
+   */
+  function resolveTokenId(
+    uint256 tokenId
+  ) external view returns (bytes32 offerId) {
+    _requireMinted(tokenId);
+    offerId = tokenOffers[tokenId];
   }
 
   /// Pausable features
 
+  /**
+   * @dev Pauses the contract
+   */
   function pause() public onlyOwner {
     _pause();
   }
 
+  /**
+   * @dev Unpauses the contract
+   */
   function unpause() public onlyOwner {
     _unpause();
   }
@@ -29,31 +72,27 @@ contract Market is Pausable, DealsRegistry, ERC1155Token {
   /// Deals features
 
   /**
-   * @dev See {DealsRegistry-deal}.
-   */
-  function deal(
-    Offer memory offer,
-    PaymentOption[] memory paymentOptions,
-    bytes32 paymentId,
-    bytes[] memory signs
-  ) external whenNotPaused {
-    _deal(offer, paymentOptions, paymentId, signs);
-  }
-
-  /**
-   * @dev See {DealsRegistry-_beforeDealCreated}.
+   * @dev Executes before a deal is created
+   * @param offer The details of the offer
+   * @param price The price of the offer
+   * @param asset The address of the asset
+   * @param signs The signatures of the offer
    */
   function _beforeDealCreated(
     Offer memory offer,
     uint256 price,
     address asset,
     bytes[] memory signs
-  ) internal override(DealsRegistry) {
+  ) internal override(DealsRegistry) whenNotPaused {
     super._beforeDealCreated(offer, price, asset, signs);
   }
 
   /**
-   * @dev See {DealsRegistry-_afterDealCreated}.
+   * @dev Executes after a deal is created
+   * @param offer The details of the offer
+   * @param price The price of the offer
+   * @param asset The address of the asset
+   * @param signs The signatures of the offer
    */
   function _afterDealCreated(
     Offer memory offer,
@@ -61,93 +100,85 @@ contract Market is Pausable, DealsRegistry, ERC1155Token {
     address asset,
     bytes[] memory signs
   ) internal override(DealsRegistry) {
+    // After-deal logic
     super._afterDealCreated(offer, price, asset, signs);
   }
 
-  /// Suppliers features
-
   /**
-   * @dev See {SuppliersRegistry-_register}.
+   * @dev Executes after a deal is claimed
+   * @param offerId The ID of the offer
+   * @param buyer The address of the buyer
    */
-  function register(bytes32 salt, address signer) external whenNotPaused {
-    _register(salt, signer);
+  function _afterDealClaimed(
+    bytes32 offerId,
+    address buyer
+  ) internal override(DealsRegistry) {
+    // Minting of a token
+    uint256 tokenId = safeMint(buyer);
+    // Create a map of tokenId on offer Id
+    tokenOffers[tokenId] = offerId;
+    super._afterDealClaimed(offerId, buyer);
   }
 
-  /**
-   * @dev See {SuppliersRegistry-_changeSigner}.
-   */
-  function changeSigner(
-    bytes32 id,
-    address signer
-  ) external onlySupplierOwner(id) {
-    _changeSigner(id, signer);
-  }
+  /// ERC721 features
 
   /**
-   * @dev See {SuppliersRegistry-_toggleSupplier}.
+   * @dev Returns the token URI of the given token ID
+   * @param tokenId The ID of the token
+   * @return The token URI of the given token ID
    */
-  function toggleSupplier(
-    bytes32 id
-  ) external onlySupplierOwner(id) whenNotPaused {
-    _toggleSupplier(id);
-  }
-
-  /**
-   * @dev See {SuppliersRegistry._addDeposit}.
-   */
-  function addDeposit(
-    bytes32 id,
-    uint256 value
-  ) external onlySupplierOwner(id) whenNotPaused {
-    _addDeposit(id, value, 0, "");
-  }
-
-  /**
-   * @dev See {SuppliersRegistry-_addDeposit}.
-   */
-  function addDeposit(
-    bytes32 id,
-    uint256 value,
-    uint256 deadline,
-    bytes memory sign
-  ) external onlySupplierOwner(id) whenNotPaused {
-    _addDeposit(id, value, deadline, sign);
-  }
-
-  /**
-   * @dev See {SuppliersRegistry-_withdrawDeposit}.
-   */
-  function withdrawDeposit(
-    bytes32 id,
-    uint256 value
-  ) external onlySupplierOwner(id) whenNotPaused {
-    _withdrawDeposit(id, value);
-  }
-
-  /// ERC1155 features
-
-  /**
-   * @dev See {IERC1155MetadataURI-uri}.
-   */
-  function uri(
-    uint256 id
-  ) public view override(ERC1155) returns (string memory) {
-    // Generate data-uri that depends on the id
+  function tokenURI(
+    uint256 tokenId
+  ) public view override(ERC721) returns (string memory) {
+    _requireMinted(tokenId);
+    // TODO: Generate data-uri that depends on the id
     return "";
   }
 
   /**
-   * @dev See {ERC1155-_beforeTokenTransfer}.
+   * @dev Executes before a token transfer
+   * @param from The address to transfer the token from
+   * @param to The address to transfer the token to
+   * @param tokenId The ID of the token being transferred
+   * @param batchSize The size of the batch being transferred
+   *
+   * NOTE: Initially minted token is transferred to his owner without any restrictions
+   * All other transfers are managed according the following requirements:
+   *
+   * - token must be linked to an offerId
+   * - token can be transferred or not according to the configuration of offer
+   * - token can not be transferred when the deal status is `Claimed` only
    */
   function _beforeTokenTransfer(
-    address operator,
     address from,
     address to,
-    uint256[] memory ids,
-    uint256[] memory amounts,
-    bytes memory data
-  ) internal override(ERC1155Token) {
-    super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
+    uint256 tokenId,
+    uint256 batchSize
+  ) internal override(ERC721Token) whenNotPaused {
+    // Execute the logic when the function called not from `_mint`
+    if (from != address(0)) {
+      bytes32 offerId = tokenOffers[tokenId];
+
+      if (offerId == bytes32(0)) {
+        revert DealNotFound();
+      }
+
+      Deal storage offerDeal = deals[offerId];
+
+      // Prevent transfer of token when this is not allowed by the offer
+      // or the deal is in the non-transferrable status
+      if (
+        !offerDeal.offer.transferable ||
+        offerDeal.status != DealStatus.Claimed
+      ) {
+        revert TokenTransferNotAllowed();
+      }
+
+      // Change the deal buyer to the new token owner
+      offerDeal.buyer = to;
+    }
+
+    super._beforeTokenTransfer(from, to, tokenId, batchSize);
   }
 
   uint256[50] private __gap;

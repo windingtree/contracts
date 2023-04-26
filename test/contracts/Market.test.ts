@@ -116,7 +116,7 @@ describe('Market contract', () => {
   let erc20: MockERC20Dec18;
   let lif: MockERC20Dec18Permit;
 
-  before(() => {
+  before(async () => {
     provider = Provider.getDefaultProvider();
     [
       deployerWallet,
@@ -126,9 +126,6 @@ describe('Market contract', () => {
       supplierSignerWallet,
     ] = createWallets(provider);
     deployer = new Deployer(hre, deployerWallet);
-  });
-
-  before(async () => {
     erc20 = await deployErc20(deployer, deployerWallet.address, 'STABLE');
     lif = await deployErc20Permit(deployer, deployerWallet.address, 'LIF');
     market = await deployMarket(deployer, deployerWallet.address, lif);
@@ -326,6 +323,7 @@ describe('Market contract', () => {
       });
 
       it('should add deposit', async () => {
+        const lifBefore = await lif.balanceOf(supplierOwnerWallet.address);
         expect(await market.balanceOfSupplier(supplierId)).to.eq(minDeposit);
         const value = BigNumber.from('1');
         await (
@@ -337,6 +335,9 @@ describe('Market contract', () => {
             ['addDeposit(bytes32,uint256)'](supplierId, value)
         ).wait();
         expect(await market.balanceOfSupplier(supplierId)).to.eq(minDeposit.add(value));
+        expect(await lif.balanceOf(supplierOwnerWallet.address)).to.eq(
+          lifBefore.sub(value),
+        );
       });
 
       it.skip('should throw if invalid permit signature provided', async () => {
@@ -389,6 +390,7 @@ describe('Market contract', () => {
       });
 
       it('should withdraw deposit', async () => {
+        const lifBefore = await lif.balanceOf(supplierOwnerWallet.address);
         expect(await market.balanceOfSupplier(supplierId)).to.eq(minDeposit);
         await (
           await market
@@ -396,6 +398,9 @@ describe('Market contract', () => {
             .withdrawDeposit(supplierId, minDeposit)
         ).wait();
         expect(await market.balanceOfSupplier(supplierId)).to.eq(constants.Zero);
+        expect(await lif.balanceOf(supplierOwnerWallet.address)).to.eq(
+          lifBefore.add(minDeposit),
+        );
       });
     });
   });
@@ -442,7 +447,7 @@ describe('Market contract', () => {
       );
     });
 
-    describe('#deal(**)', () => {
+    describe('#deal(Offer,PaymentOption[],bytes32,bytes[])', () => {
       it('should throw if invalid payment options provided', async () => {
         await expect(
           (
@@ -577,6 +582,138 @@ describe('Market contract', () => {
               )
           ).wait(),
         ).to.rejected; //revertedWithCustomError(market, 'DisabledSupplier');
+      });
+    });
+
+    describe('#claim(bytes32)', () => {
+      describe('without deal', () => {
+        it('should throw if deal not found', async () => {
+          await expect(
+            (
+              await market.connect(supplierSignerWallet).claim(randomId(), {
+                gasLimit: 5000000,
+              })
+            ).wait(),
+          ).to.rejected;
+        });
+      });
+
+      describe('with deal', () => {
+        let offer: Offer;
+
+        beforeEach(async () => {
+          offer = await buildRandomOffer(
+            supplierId,
+            supplierSignerWallet,
+            'Market',
+            '1',
+            (
+              await market.provider.getNetwork()
+            ).chainId,
+            market.address,
+            erc20.address,
+          );
+          await (
+            await erc20
+              .connect(buyerWallet)
+              .approve(market.address, offer.payment[0].price)
+          ).wait();
+          console.log('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@');
+          await (
+            await market
+              .connect(buyerWallet)
+              .deal(offer.payload, offer.payment, offer.payment[0].id, [offer.signature])
+          ).wait();
+        });
+
+        it('should throw called not by signer', async () => {
+          await expect(
+            (
+              await market.connect(buyerWallet).claim(offer.payload.id, {
+                gasLimit: 5000000,
+              })
+            ).wait(),
+          ).to.rejected; //revertedWithCustomError(market, 'NotAllowed');
+        });
+
+        it('should claim the deal', async () => {
+          const tx = await market.connect(supplierSignerWallet).claim(offer.payload.id);
+          await tx.wait();
+          await expect(tx)
+            .to.emit(market, 'DealClaimed')
+            .withArgs(offer.payload.id, supplierSignerWallet.address);
+          await expect(tx)
+            .to.emit(market, 'Transfer')
+            .withArgs(constants.AddressZero, buyerWallet.address, 0);
+          expect(await market.resolveTokenId(0)).to.eq(offer.payload.id);
+          const {
+            offer: contractOffer,
+            buyer,
+            price,
+            asset,
+            status,
+          } = await market.deals(offer.payload.id);
+          expect(buyer).to.eq(buyerWallet.address);
+          structEqual(contractOffer, offer.payload);
+          expect(price).to.eq(offer.payment[0].price);
+          expect(asset).to.eq(offer.payment[0].asset);
+          expect(status).to.eq(1);
+        });
+
+        it('should throw id deal "not-created"', async () => {
+          await (
+            await market.connect(supplierSignerWallet).claim(offer.payload.id)
+          ).wait();
+          await expect(
+            (
+              await market.connect(supplierSignerWallet).claim(offer.payload.id, {
+                gasLimit: 5000000,
+              })
+            ).wait(),
+          ).to.rejected; //revertedWithCustomError(market, 'DealNotCreated');
+        });
+      });
+    });
+
+    describe('#transferFrom(address,address,uint256)', () => {
+      let offer: Offer;
+
+      beforeEach(async () => {
+        offer = await buildRandomOffer(
+          supplierId,
+          supplierSignerWallet,
+          'Market',
+          '1',
+          (
+            await market.provider.getNetwork()
+          ).chainId,
+          market.address,
+          erc20.address,
+          true,
+        );
+        await (
+          await erc20.connect(buyerWallet).approve(market.address, offer.payment[0].price)
+        ).wait();
+        await (
+          await market
+            .connect(buyerWallet)
+            .deal(offer.payload, offer.payment, offer.payment[0].id, [offer.signature])
+        ).wait();
+        await (await market.connect(supplierSignerWallet).claim(offer.payload.id)).wait();
+      });
+
+      it('should transfer', async () => {
+        expect(await market.ownerOf(0)).to.eq(buyerWallet.address);
+        const { status } = await market.deals(offer.payload.id);
+        expect(status).to.eq(1); // claimed
+        const tx = await market
+          .connect(buyerWallet)
+          .transferFrom(buyerWallet.address, notOwnerWallet.address, 0);
+        await tx.wait();
+        await expect(tx)
+          .to.emit(market, 'Transfer')
+          .withArgs(buyerWallet.address, notOwnerWallet.address, 0);
+        expect(await market.ownerOf(0)).to.eq(notOwnerWallet.address);
       });
     });
   });

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import "./Configurable.sol";
 import "./SuppliersRegistry.sol";
 import "./utils/IERC20.sol";
 import "./utils/SignatureUtils.sol";
@@ -14,7 +15,12 @@ import "./utils/SignatureUtils.sol";
  * The contract stores offers made by suppliers, and allows buyers to create deals based on those offers.
  * Each deal specifies the payment and cancellation terms, and can be tracked on-chain using its unique Id.
  */
-abstract contract DealsRegistry is Context, EIP712, SuppliersRegistry {
+abstract contract DealsRegistry is
+  Configurable,
+  Pausable,
+  SuppliersRegistry,
+  EIP712
+{
   using SignatureChecker for address;
   using SignatureUtils for bytes;
 
@@ -110,15 +116,28 @@ abstract contract DealsRegistry is Context, EIP712, SuppliersRegistry {
   /**
    * @dev Emitted when a Deal is created by a buyer
    * @param offerId The Id of the offer used to create the deal
-   * @param buyer The address of the buyer who created the deal
+   * @param buyer The address of the buyer who is created the deal
    */
   event DealCreated(bytes32 indexed offerId, address indexed buyer);
+
+  /**
+   * @dev Emitted when a Deal is claimed by a supplier's signer
+   * @param offerId The Id of the offer used to create the deal
+   * @param signer The address of the supplier's signer who is claimed the deal
+   */
+  event DealClaimed(bytes32 indexed offerId, address indexed signer);
 
   /// @dev Thrown when a user attempts to create a deal using an offer with an invalid signature
   error InvalidOfferSignature();
 
   /// @dev Thrown when a user attempts to create an already existing Deal
   error DealExists();
+
+  /// @dev Thrown when Deal was created in the `_beforeDealCreated` hook
+  error DealAlreadyCreated();
+
+  /// @dev Thrown when the Deal is not found
+  error DealNotFound();
 
   /// @dev Thrown when a user attempts to create a deal providing an invalid payment options
   error InvalidPaymentOptions();
@@ -135,6 +154,15 @@ abstract contract DealsRegistry is Context, EIP712, SuppliersRegistry {
   /// @dev Thrown when the supplier of the offer is not enabled
   error DisabledSupplier();
 
+  /// @dev Thrown when a function call is not allowed
+  error NotAllowed();
+
+  /// @dev Thrown when a user attempts to claim the deal in non-created status
+  error DealNotCreated();
+
+  /// @dev Thrown when a user attempts to claim already claimed deal
+  error DealAlreadyClaimed();
+
   /**
    * @dev DealsRegistry constructor
    * @param name EIP712 contract name
@@ -145,7 +173,13 @@ abstract contract DealsRegistry is Context, EIP712, SuppliersRegistry {
     string memory version,
     address asset,
     uint256 minDeposit
-  ) EIP712(name, version) SuppliersRegistry(asset, minDeposit) {}
+  ) EIP712(name, version) SuppliersRegistry(asset, minDeposit) {
+    // The default time period, in seconds, allowed for the supplier to claim the deal.
+    // The buyer is not able to cancel the deal during this period
+    config("claim_period", 60);
+  }
+
+  /// Utilities
 
   /// @dev Create a has of bytes32 array
   function hash(bytes32[] memory hashes) internal pure returns (bytes32) {
@@ -221,6 +255,57 @@ abstract contract DealsRegistry is Context, EIP712, SuppliersRegistry {
       );
   }
 
+  /// Workflow hooks
+
+  /**
+   * @dev Hook function that runs before a new deal is created.
+   * Allows inheriting smart contracts to perform custom logic.
+   * @param offer The offer used to create the deal
+   * @param price The price of the asset in wei
+   * @param asset The address of the ERC20 token used for payment
+   * @param signs An array of signatures authorizing the creation of the deal
+   */
+  function _beforeDealCreated(
+    Offer memory offer,
+    uint256 price,
+    address asset,
+    bytes[] memory signs
+  ) internal virtual whenNotPaused {}
+
+  /**
+   * @dev Hook function that runs after a new deal is created.
+   * Allows inheriting smart contracts to perform custom logic.
+   * @param offer The offer used to create the deal
+   * @param price The price of the asset in wei
+   * @param asset The address of the ERC20 token used for payment
+   * @param signs An array of signatures authorizing the creation of the deal
+   */
+  function _afterDealCreated(
+    Offer memory offer,
+    uint256 price,
+    address asset,
+    bytes[] memory signs
+  ) internal virtual {}
+
+  /**
+   * @dev Hook function that runs before the deal is claimed.
+   * Allows inheriting smart contracts to perform custom logic.
+   * @param offerId The offerId of the deal
+   */
+  function _beforeDealClaimed(
+    bytes32 offerId,
+    address buyer
+  ) internal virtual whenNotPaused {}
+
+  /**
+   * @dev Hook function that runs after the deal is claimed.
+   * Allows inheriting smart contracts to perform custom logic.
+   * @param offerId The offerId of the deal
+   */
+  function _afterDealClaimed(bytes32 offerId, address buyer) internal virtual {}
+
+  /// Features
+
   /**
    * @dev Creates a Deal on a base of an offer
    * @param offer An offer payload
@@ -228,14 +313,24 @@ abstract contract DealsRegistry is Context, EIP712, SuppliersRegistry {
    * @param paymentId Payment option Id
    * @param signs Signatures: [0] - offer: ECDSA/ERC1271; [1] - asset permit: ECDSA (optional)
    *
+   * Requirements:
+   *
+   * - supplier of the offer must be registered
+   * - offer must be signed with a proper signer
+   * - the deal should not be created before
+   * - the deal should not be created inside the _before hook
+   * - payment options must be valid (equal to those from the offer)
+   * - payment Id must exists in payment options
+   * - the contract must be able to make transfer of funds
+   *
    * NOTE: `permit` signature can be ECDSA of type only
    */
-  function _deal(
+  function deal(
     Offer memory offer,
     PaymentOption[] memory paymentOptions,
     bytes32 paymentId,
     bytes[] memory signs
-  ) internal virtual {
+  ) external {
     address buyer = _msgSender();
 
     bytes32 offerHash = _hashTypedDataV4(hash(offer));
@@ -288,6 +383,11 @@ abstract contract DealsRegistry is Context, EIP712, SuppliersRegistry {
 
     _beforeDealCreated(offer, price, asset, signs);
 
+    // Check that the deal was not created by `_beforeDealCreated` hook
+    if (deals[offer.id].offer.id == offer.id) {
+      revert DealAlreadyCreated();
+    }
+
     // Creating the deal before any external call to avoid reentrancy
     deals[offer.id] = Deal(offer, buyer, price, asset, DealStatus.Created);
 
@@ -308,34 +408,48 @@ abstract contract DealsRegistry is Context, EIP712, SuppliersRegistry {
   }
 
   /**
-   * @dev Hook function that runs before a new deal is created.
-   * Allows inheriting smart contracts to perform custom logic.
-   * @param offer The offer used to create the deal
-   * @param price The price of the asset in wei
-   * @param asset The address of the ERC20 token used for payment
-   * @param signs An array of signatures authorizing the creation of the deal
+   * @dev Claims the deal
+   * @param offerId The deal offer Id
+   *
+   * Requirements:
+   *
+   * - the deal must exists
+   * - the deal must be in status DealStatus.Created
+   * - must be called by the signer address of the deal offer supplier
    */
-  function _beforeDealCreated(
-    Offer memory offer,
-    uint256 price,
-    address asset,
-    bytes[] memory signs
-  ) internal virtual {}
+  function claim(bytes32 offerId) external {
+    Deal storage claimingDeal = deals[offerId];
 
-  /**
-   * @dev Hook function that runs after a new deal is created.
-   * Allows inheriting smart contracts to perform custom logic.
-   * @param offer The offer used to create the deal
-   * @param price The price of the asset in wei
-   * @param asset The address of the ERC20 token used for payment
-   * @param signs An array of signatures authorizing the creation of the deal
-   */
-  function _afterDealCreated(
-    Offer memory offer,
-    uint256 price,
-    address asset,
-    bytes[] memory signs
-  ) internal virtual {}
+    // Deal must exists
+    if (claimingDeal.offer.id == bytes32(0)) {
+      revert DealNotFound();
+    }
+
+    // Deal should not be claimed
+    if (claimingDeal.status != DealStatus.Created) {
+      revert DealNotCreated();
+    }
+
+    address signer = _msgSender();
+    Supplier storage supplier = suppliers[claimingDeal.offer.supplierId];
+
+    // Registered signer of the supplier is allowed to claim the deal
+    if (signer != supplier.signer) {
+      revert NotAllowed();
+    }
+
+    _beforeDealClaimed(offerId, claimingDeal.buyer);
+
+    // Prevent claiming of the deal inside the `_beforeDealClaimed` hook
+    if (claimingDeal.status == DealStatus.Claimed) {
+      revert DealAlreadyClaimed();
+    }
+
+    claimingDeal.status = DealStatus.Claimed;
+    emit DealClaimed(offerId, signer);
+
+    _afterDealClaimed(offerId, claimingDeal.buyer);
+  }
 
   uint256[50] private __gap;
 }

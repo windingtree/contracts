@@ -2,7 +2,9 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/utils/Context.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "./Configurable.sol";
 import "./utils/IERC20.sol";
 import "./utils/SignatureUtils.sol";
 
@@ -10,15 +12,9 @@ import "./utils/SignatureUtils.sol";
  * @title SuppliersRegistry
  * @dev A smart contract for registering and managing suppliers who can participate in deals.
  */
-abstract contract SuppliersRegistry is Context {
+abstract contract SuppliersRegistry is Context, Configurable, Pausable {
   using SafeMath for uint256;
   using SignatureUtils for bytes;
-
-  /// @dev Supplier's deposit asset
-  address public asset;
-
-  /// @dev Minimum deposit value
-  uint256 public minDeposit;
 
   /**
    * @dev Supplier storage struct
@@ -87,8 +83,10 @@ abstract contract SuppliersRegistry is Context {
    * @dev SuppliersRegistry constructor
    */
   constructor(address _asset, uint256 _minDeposit) {
-    asset = _asset;
-    minDeposit = _minDeposit;
+    // Supplier's deposit asset
+    config("asset", _asset);
+    // Minimum deposit value
+    config("min_deposit", _minDeposit);
   }
 
   /// Getters
@@ -109,7 +107,7 @@ abstract contract SuppliersRegistry is Context {
     return suppliers[id].enabled;
   }
 
-  /// Internal functions
+  /// Features
 
   /**
    * @dev Registers a new supplier entity
@@ -127,7 +125,7 @@ abstract contract SuppliersRegistry is Context {
    * NOTE: When the supplier is registered its initial `enabled` status is set to `false`.
    * This means that to start accepting deals the supplier must be enabled
    */
-  function _register(bytes32 salt, address signer) internal {
+  function register(bytes32 salt, address signer) external whenNotPaused {
     address supplierOwner = _msgSender();
     bytes32 id = keccak256(abi.encodePacked(supplierOwner, salt));
 
@@ -151,10 +149,10 @@ abstract contract SuppliersRegistry is Context {
    *
    * - can be called by the supplier owner only
    */
-  function _changeSigner(
+  function changeSigner(
     bytes32 id,
     address signer
-  ) internal onlySupplierOwner(id) {
+  ) external onlySupplierOwner(id) whenNotPaused {
     address oldSigner = suppliers[id].signer;
     suppliers[id].signer = signer;
     emit SignerChanged(id, _msgSender(), oldSigner, signer);
@@ -173,11 +171,63 @@ abstract contract SuppliersRegistry is Context {
    *
    * - can be called by the supplier owner only
    */
-  function _toggleSupplier(bytes32 id) internal onlySupplierOwner(id) {
+  function toggleSupplier(
+    bytes32 id
+  ) external onlySupplierOwner(id) whenNotPaused {
     bool enabled = !suppliers[id].enabled;
     suppliers[id].enabled = enabled;
     emit ToggleEnabled(id, _msgSender(), enabled);
   }
+
+  /**
+   * @dev See {SuppliersRegistry._addDeposit}.
+   */
+  function addDeposit(bytes32 id, uint256 value) external whenNotPaused {
+    _addDeposit(id, value, 0, "");
+  }
+
+  /**
+   * @dev See {SuppliersRegistry-_addDeposit}.
+   */
+  function addDeposit(
+    bytes32 id,
+    uint256 value,
+    uint256 deadline,
+    bytes memory sign
+  ) external whenNotPaused {
+    _addDeposit(id, value, deadline, sign);
+  }
+
+  /**
+   * @dev Makes deposit withdrawal of the supplier
+   * @param id The supplier Id
+   * @param value Amount of `asset` tokens that must be withdrawn
+   *
+   * If the tokens withdrawal is succeeded:
+   * - the function emits `Withdraw(bytes32 id, address sender, uint256 value)` event
+   *
+   * Requirements:
+   *
+   * - can be called by the supplier owner only
+   */
+  function withdrawDeposit(
+    bytes32 id,
+    uint256 value
+  ) external onlySupplierOwner(id) whenNotPaused {
+    if (deposits[id] < value) {
+      revert DepositNotEnough();
+    }
+
+    if (!IERC20(addresses["asset"]).transfer(_msgSender(), value)) {
+      revert DepositTransferFailed();
+    }
+
+    deposits[id] = deposits[id].sub(value);
+
+    emit Withdraw(id, _msgSender(), value);
+  }
+
+  /// Internal functions
 
   /**
    * @dev Makes deposit of `asset` tokens with permit
@@ -203,11 +253,12 @@ abstract contract SuppliersRegistry is Context {
     uint256 deadline,
     bytes memory sign
   ) internal onlySupplierOwner(id) {
-    if (deposits[id].add(value) < minDeposit) {
+    if (deposits[id].add(value) < numbers["min_deposit"]) {
       revert DepositTooSmall();
     }
 
     address supplierOwner = _msgSender();
+    address asset = addresses["asset"];
 
     if (sign.length > 0) {
       // Use permit function to transfer tokens from the sender to the contract
@@ -231,35 +282,6 @@ abstract contract SuppliersRegistry is Context {
     deposits[id] = deposits[id].add(value);
 
     emit Deposit(id, supplierOwner, value);
-  }
-
-  /**
-   * @dev Makes deposit withdrawal of the supplier
-   * @param id The supplier Id
-   * @param value Amount of `asset` tokens that must be withdrawn
-   *
-   * If the tokens withdrawal is succeeded:
-   * - the function emits `Withdraw(bytes32 id, address sender, uint256 value)` event
-   *
-   * Requirements:
-   *
-   * - can be called by the supplier owner only
-   */
-  function _withdrawDeposit(
-    bytes32 id,
-    uint256 value
-  ) internal onlySupplierOwner(id) {
-    if (deposits[id] < value) {
-      revert DepositNotEnough();
-    }
-
-    if (!IERC20(asset).transfer(_msgSender(), value)) {
-      revert DepositTransferFailed();
-    }
-
-    deposits[id] = deposits[id].sub(value);
-
-    emit Withdraw(id, _msgSender(), value);
   }
 
   uint256[50] private __gap;
