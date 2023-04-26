@@ -1,5 +1,5 @@
 {
-  "plugins": ["prettier-plugin-solidity"],
+  "plugins": ["prettier-plugin-solidity", "prettier-plugin-jsdoc"],
   "semi": true,
   "trailingComma": "all",
   "singleQuote": true,

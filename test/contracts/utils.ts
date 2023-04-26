@@ -186,6 +186,7 @@ export const buildRandomOffer = async (
   chainId: BigNumberish,
   verifyingContract: string,
   erc20address: string,
+  transferableOverride?: boolean,
 ): Promise<Offer> => {
   const request: Request = {
     id: randomId(),
@@ -221,7 +222,7 @@ export const buildRandomOffer = async (
     optionsHash: hashObject({}),
     paymentHash: hashPaymentOptionArray(payment),
     cancelHash: hashCancelOptionArray(cancel),
-    transferable: Math.random() > 0.5,
+    transferable: transferableOverride ?? Math.random() > 0.5,
     checkIn: checkInTime,
   };
 
