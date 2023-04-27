@@ -1,5 +1,12 @@
 import { expect } from 'chai';
-import { utils, BigNumber, BigNumberish, TypedDataField, Wallet } from 'ethers';
+import {
+  utils,
+  BigNumber,
+  BigNumberish,
+  TypedDataField,
+  VoidSigner,
+  ContractTransaction,
+} from 'ethers';
 import {
   PAYMENT_OPTION_TYPE_HASH,
   CANCEL_OPTION_TYPE_HASH,
@@ -180,7 +187,7 @@ export const offerEip712Types: Record<string, Array<TypedDataField>> = {
 
 export const buildRandomOffer = async (
   supplierId: string,
-  signer: Wallet,
+  signer: VoidSigner,
   name: string,
   version: string,
   chainId: BigNumberish,
@@ -257,7 +264,7 @@ export const structEqual = (struct: { [k: string]: any }, obj: { [k: string]: an
 };
 
 export const createPermitSignature = async (
-  signer: Wallet,
+  signer: VoidSigner,
   erc20: MockERC20Dec18Permit,
   owner: string,
   spender: string,
@@ -308,4 +315,18 @@ export const createPermitSignature = async (
       deadline,
     },
   );
+};
+
+export const getEventArgs = async <T>(tx: ContractTransaction, name: string) => {
+  const { events } = await tx.wait();
+
+  if (events) {
+    for (const event of events) {
+      if (event.event === name) {
+        return event.args as T;
+      }
+    }
+  }
+
+  throw new Error(`Event ${name} not found in the transaction ${tx.hash}`);
 };

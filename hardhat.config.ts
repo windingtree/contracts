@@ -1,47 +1,75 @@
 import 'dotenv/config';
-import { HardhatUserConfig } from 'hardhat/config.js';
-import '@matterlabs/hardhat-zksync-toolbox';
+import { HardhatUserConfig } from 'hardhat/types';
+import '@nomiclabs/hardhat-ethers';
+import '@nomiclabs/hardhat-solhint';
+import '@nomicfoundation/hardhat-chai-matchers';
+import '@openzeppelin/hardhat-upgrades';
+import '@nomiclabs/hardhat-etherscan';
 import '@typechain/hardhat';
+import 'hardhat-deploy';
+import 'hardhat-deploy-ethers';
+import 'hardhat-gas-reporter';
+import 'solidity-coverage';
 import './tasks';
-
-const zkSyncTestnet =
-  process.env.NODE_ENV === 'test'
-    ? {
-        url: 'http://localhost:3050',
-        ethNetwork: 'http://localhost:8545',
-        zksync: true,
-      }
-    : {
-        url: 'https://zksync2-testnet.zksync.dev',
-        ethNetwork: 'goerli',
-        zksync: true,
-      };
+import { nodeUrl, accounts, addForkConfiguration } from './utils/network';
 
 const config: HardhatUserConfig = {
-  zksolc: {
-    version: '1.3.8',
-    compilerSource: 'binary',
-    settings: {
-      isSystem: true,
-    },
-  },
-  defaultNetwork: 'hardhat',
-  networks: {
-    hardhat: {
-      zksync: true,
-    },
-    goerli: {
-      url: `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY ?? ''}`,
-      zksync: false,
-    },
-    zkSyncTestnet,
-  },
   solidity: {
-    version: '0.8.19',
+    compilers: [
+      {
+        version: '0.8.19',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 2000,
+          },
+        },
+      },
+    ],
+  },
+  namedAccounts: {
+    owner: 0,
+    notOwner: 1,
+    buyer: 2,
+    supplierOwner: 3,
+    supplierSigner: 4,
+  },
+  networks: addForkConfiguration({
+    hardhat: {
+      initialBaseFeePerGas: 0,
+      allowUnlimitedContractSize: true,
+    },
+    localhost: {
+      url: nodeUrl('localhost'),
+      accounts: accounts(),
+    },
+  }),
+  gasReporter: {
+    currency: 'USD',
+    gasPrice: 100,
+    enabled: process.env.REPORT_GAS ? true : false,
+    coinmarketcap: process.env.COINMARKETCAP_API_KEY,
+    maxMethodDiff: 10,
   },
   typechain: {
     outDir: 'typechain',
     target: 'ethers-v5',
+  },
+  mocha: {
+    timeout: 0,
+  },
+  external: process.env.HARDHAT_FORK
+    ? {
+        deployments: {
+          hardhat: ['deployments/' + process.env.HARDHAT_FORK],
+          localhost: ['deployments/' + process.env.HARDHAT_FORK],
+        },
+      }
+    : undefined,
+  verify: {
+    etherscan: {
+      apiKey: process.env.ETHERSCAN_API_KEY,
+    },
   },
 };
 

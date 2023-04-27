@@ -333,36 +333,39 @@ abstract contract DealsRegistry is
   ) external {
     address buyer = _msgSender();
 
-    bytes32 offerHash = _hashTypedDataV4(hash(offer));
-    Supplier storage supplier = suppliers[offer.supplierId];
+    /// @dev variable scoping used to avoid stack too deep errors
+    {
+      bytes32 offerHash = _hashTypedDataV4(hash(offer));
+      Supplier storage supplier = suppliers[offer.supplierId];
 
-    // Supplier who created an offer must be registered
-    if (supplier.signer == address(0)) {
-      revert InvalidSupplier();
-    }
+      // Supplier who created an offer must be registered
+      if (supplier.signer == address(0)) {
+        revert InvalidSupplier();
+      }
 
-    // Checking ECDSA/AA signature is valid
-    if (!supplier.signer.isValidSignatureNow(offerHash, signs[0])) {
-      revert InvalidOfferSignature();
-    }
+      // Checking ECDSA/AA signature is valid
+      if (!supplier.signer.isValidSignatureNow(offerHash, signs[0])) {
+        revert InvalidOfferSignature();
+      }
 
-    // Not-enabled suppliers are not allowed to accept deals
-    // So, we cannot allow to create such a deal
-    if (!supplier.enabled) {
-      revert DisabledSupplier();
-    }
+      // Not-enabled suppliers are not allowed to accept deals
+      // So, we cannot allow to create such a deal
+      if (!supplier.enabled) {
+        revert DisabledSupplier();
+      }
 
-    // Deal can be created only once
-    if (deals[offer.id].offer.id == offer.id) {
-      revert DealExists();
-    }
+      // Deal can be created only once
+      if (deals[offer.id].offer.id == offer.id) {
+        revert DealExists();
+      }
 
-    bytes32 paymentHash = hash(paymentOptions);
+      bytes32 paymentHash = hash(paymentOptions);
 
-    // payment options provided with argument must be the same
-    // as signed in the offer
-    if (paymentHash != offer.paymentHash) {
-      revert InvalidPaymentOptions();
+      // payment options provided with argument must be the same
+      // as signed in the offer
+      if (paymentHash != offer.paymentHash) {
+        revert InvalidPaymentOptions();
+      }
     }
 
     uint256 price;

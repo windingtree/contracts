@@ -168,8 +168,7 @@ contract Market is Ownable, Pausable, DealsRegistry, ERC721Token {
       // Prevent transfer of token when this is not allowed by the offer
       // or the deal is in the non-transferrable status
       if (
-        !offerDeal.offer.transferable ||
-        offerDeal.status != DealStatus.Claimed
+        !offerDeal.offer.transferable || offerDeal.status != DealStatus.Claimed
       ) {
         revert TokenTransferNotAllowed();
       }
