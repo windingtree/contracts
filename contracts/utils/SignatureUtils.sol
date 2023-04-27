@@ -7,7 +7,7 @@ library SignatureUtils {
   /// @dev Splits signature into v/r/s form
   function split(
     bytes memory signature
-  ) public pure returns (uint8 v, bytes32 r, bytes32 s) {
+  ) internal pure returns (uint8 v, bytes32 r, bytes32 s) {
     if (signature.length == 65) {
       assembly {
         r := mload(add(signature, 0x20))

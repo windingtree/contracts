@@ -1,0 +1,3 @@
+*.sol linguist-language=Solidity
+*.ts linguist-language=Typescript
+* text=auto eol=lf

@@ -21,4 +21,4 @@ jobs:
       - name: Lint
         run: yarn lint
       - name: Test
-        run: yarn test:src
+        run: yarn test:src && yarn test:contracts
