@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./Configurable.sol";
 import "./SuppliersRegistry.sol";
 import "./utils/IERC20.sol";
@@ -23,6 +24,7 @@ abstract contract DealsRegistry is
 {
   using SignatureChecker for address;
   using SignatureUtils for bytes;
+  using SafeMath for uint256;
 
   bytes32 public constant PAYMENT_OPTION_TYPE_HASH =
     keccak256("PaymentOption(bytes32 id,uint256 price,address asset)");
@@ -35,6 +37,9 @@ abstract contract DealsRegistry is
       // solhint-disable-next-line max-line-length
       "Offer(bytes32 id,uint256 expire,bytes32 supplierId,uint256 chainId,bytes32 requestHash,bytes32 optionsHash,bytes32 paymentHash,bytes32 cancelHash,bool transferable,uint256 checkIn)"
     );
+
+  bytes32 public constant CHECK_IN_TYPE_HASH =
+    keccak256("Voucher(bytes32 id,address signer)");
 
   /**
    * @dev Payment option
@@ -92,6 +97,8 @@ abstract contract DealsRegistry is
     Claimed, // Claimed by the supplier
     Rejected, // Rejected by the supplier
     Cancelled, // Cancelled by the buyer
+    CheckedId, // Checked In
+    CheckedOut, // Checked Out
     Disputed // Dispute started
   }
 
@@ -110,22 +117,23 @@ abstract contract DealsRegistry is
     DealStatus status;
   }
 
+  /// @dev Mapping of context to allowed statuses list
+  mapping(bytes32 => DealStatus[]) private allowedStatuses;
+
   /// @dev Mapping of an offer Id on a Deal
   mapping(bytes32 => Deal) public deals;
 
   /**
-   * @dev Emitted when a Deal is created by a buyer
+   * @dev Emitted when a Deal status is updated
    * @param offerId The Id of the offer used to create the deal
-   * @param buyer The address of the buyer who is created the deal
+   * @param status The deal status
+   * @param sender The address of the user who is updated the status of the deal
    */
-  event DealCreated(bytes32 indexed offerId, address indexed buyer);
-
-  /**
-   * @dev Emitted when a Deal is claimed by a supplier's signer
-   * @param offerId The Id of the offer used to create the deal
-   * @param signer The address of the supplier's signer who is claimed the deal
-   */
-  event DealClaimed(bytes32 indexed offerId, address indexed signer);
+  event Status(
+    bytes32 indexed offerId,
+    DealStatus status,
+    address indexed sender
+  );
 
   /// @dev Thrown when a user attempts to create a deal using an offer with an invalid signature
   error InvalidOfferSignature();
@@ -133,7 +141,7 @@ abstract contract DealsRegistry is
   /// @dev Thrown when a user attempts to create an already existing Deal
   error DealExists();
 
-  /// @dev Thrown when Deal was created in the `_beforeDealCreated` hook
+  /// @dev Thrown when Deal was created in the `_beforeCreate` hook
   error DealAlreadyCreated();
 
   /// @dev Thrown when the Deal is not found
@@ -154,14 +162,14 @@ abstract contract DealsRegistry is
   /// @dev Thrown when the supplier of the offer is not enabled
   error DisabledSupplier();
 
-  /// @dev Thrown when a function call is not allowed
-  error NotAllowed();
+  /// @dev Thrown when a function call is not allowed for current user
+  error NotAllowedAuth();
 
   /// @dev Thrown when a user attempts to claim the deal in non-created status
-  error DealNotCreated();
+  error NotAllowedStatus();
 
-  /// @dev Thrown when a user attempts to claim already claimed deal
-  error DealAlreadyClaimed();
+  /// @dev Thrown when a user attempts to cancel the deal using invalid cancellation options
+  error InvalidCancelOptions();
 
   /**
    * @dev DealsRegistry constructor
@@ -177,46 +185,106 @@ abstract contract DealsRegistry is
     // The default time period, in seconds, allowed for the supplier to claim the deal.
     // The buyer is not able to cancel the deal during this period
     config("claim_period", 60);
+
+    allowedStatuses["reject"] = [DealStatus.Created];
+    allowedStatuses["cancel"] = [DealStatus.Created, DealStatus.Claimed];
+    allowedStatuses["claim"] = [DealStatus.Created];
+    allowedStatuses["checkIn"] = [DealStatus.Claimed];
+  }
+
+  /// Modifiers
+
+  /**
+   * @dev Modifier to make a function callable only when deal is exists
+   *
+   * Requirements:
+   *
+   * - the deal of the `offerId` must exists
+   */
+  modifier dealExists(bytes32 offerId) {
+    if (deals[offerId].offer.id == bytes32(0)) {
+      revert DealNotFound();
+    }
+    _;
+  }
+
+  /**
+   * @dev Modifier to make a function callable only when deal in specific statuses.
+   *
+   * Requirements:
+   *
+   * - the deal of the `offerId` must exists
+   * - the deal is in `statuses`
+   */
+  modifier inStatuses(bytes32 offerId, DealStatus[] memory statuses) {
+    uint256 allowed;
+    DealStatus currentStatus = deals[offerId].status;
+
+    for (uint256 i = 0; i < statuses.length; i++) {
+      if (currentStatus == statuses[i]) {
+        allowed = 1;
+        break;
+      }
+    }
+
+    if (allowed != 1) {
+      revert NotAllowedStatus();
+    }
+    _;
+  }
+
+  /**
+   * @dev Modifier to make a function callable only by supplier's signer.
+   *
+   * Requirements:
+   *
+   * - the function called by the supplier's signer
+   */
+  modifier onlySigner(bytes32 offerId) {
+    if (_msgSender() != suppliers[deals[offerId].offer.supplierId].signer) {
+      revert NotAllowedAuth();
+    }
+    _;
   }
 
   /// Utilities
 
   /// @dev Create a has of bytes32 array
-  function hash(bytes32[] memory hashes) internal pure returns (bytes32) {
-    return keccak256(abi.encodePacked(hashes));
+  function hash(bytes32[] memory _hashes) internal pure returns (bytes32) {
+    return keccak256(abi.encodePacked(_hashes));
   }
 
   /// @dev Creates a hash of a PaymentOption
   function hash(
-    PaymentOption memory paymentOptions
+    PaymentOption memory _paymentOptions
   ) internal pure returns (bytes32) {
     return
       keccak256(
         abi.encodePacked(
           PAYMENT_OPTION_TYPE_HASH,
-          paymentOptions.id,
-          paymentOptions.price,
-          paymentOptions.asset
+          _paymentOptions.id,
+          _paymentOptions.price,
+          _paymentOptions.asset
         )
       );
   }
 
   /// @dev Creates a hash of a CancelOption
-  function hash(CancelOption memory cancel) internal pure returns (bytes32) {
+  function hash(CancelOption memory _cancel) internal pure returns (bytes32) {
     return
       keccak256(
-        abi.encodePacked(CANCEL_OPTION_TYPE_HASH, cancel.time, cancel.penalty)
+        abi.encodePacked(CANCEL_OPTION_TYPE_HASH, _cancel.time, _cancel.penalty)
       );
   }
 
   /// @dev Creates a hash of an array of PaymentOption
   function hash(
-    PaymentOption[] memory paymentOptions
+    PaymentOption[] memory _paymentOptions
   ) internal pure returns (bytes32) {
-    bytes32[] memory hashes = new bytes32[](paymentOptions.length);
+    bytes32[] memory hashes = new bytes32[](_paymentOptions.length);
 
-    for (uint256 i = 0; i < paymentOptions.length; i++) {
-      hashes[i] = hash(paymentOptions[i]);
+    for (uint256 i = 0; i < _paymentOptions.length; i++) {
+      hashes[i] = hash(_paymentOptions[i]);
     }
 
     return hash(hashes);
@@ -224,35 +292,43 @@ abstract contract DealsRegistry is
 
   /// @dev Creates a hash of an array of CancelOption
   function hash(
-    CancelOption[] memory cancelOptions
+    CancelOption[] memory _cancelOptions
   ) internal pure returns (bytes32) {
-    bytes32[] memory hashes = new bytes32[](cancelOptions.length);
+    bytes32[] memory hashes = new bytes32[](_cancelOptions.length);
 
-    for (uint256 i = 0; i < cancelOptions.length; i++) {
-      hashes[i] = hash(cancelOptions[i]);
+    for (uint256 i = 0; i < _cancelOptions.length; i++) {
+      hashes[i] = hash(_cancelOptions[i]);
     }
 
     return hash(hashes);
   }
 
   /// @dev Creates a hash of an Offer
-  function hash(Offer memory offer) internal pure returns (bytes32) {
+  function hash(Offer memory _offer) internal pure returns (bytes32) {
     return
       keccak256(
         abi.encode(
           OFFER_TYPE_HASH,
-          offer.id,
-          offer.expire,
-          offer.supplierId,
-          offer.chainId,
-          offer.requestHash,
-          offer.optionsHash,
-          offer.paymentHash,
-          offer.cancelHash,
-          offer.transferable,
-          offer.checkIn
+          _offer.id,
+          _offer.expire,
+          _offer.supplierId,
+          _offer.chainId,
+          _offer.requestHash,
+          _offer.optionsHash,
+          _offer.paymentHash,
+          _offer.cancelHash,
+          _offer.transferable,
+          _offer.checkIn
         )
       );
+  }
+
+  /// @dev Create a hash of check-in data
+  function hashCheckInOut(
+    bytes32 _id,
+    address _signer
+  ) internal pure returns (bytes32) {
+    return keccak256(abi.encode(CHECK_IN_TYPE_HASH, _id, _signer));
   }
 
   /// Workflow hooks
@@ -265,7 +341,7 @@ abstract contract DealsRegistry is
    * @param asset The address of the ERC20 token used for payment
    * @param signs An array of signatures authorizing the creation of the deal
    */
-  function _beforeDealCreated(
+  function _beforeCreate(
     Offer memory offer,
     uint256 price,
     address asset,
@@ -280,7 +356,7 @@ abstract contract DealsRegistry is
    * @param asset The address of the ERC20 token used for payment
    * @param signs An array of signatures authorizing the creation of the deal
    */
-  function _afterDealCreated(
+  function _afterCreate(
     Offer memory offer,
     uint256 price,
     address asset,
@@ -288,11 +364,31 @@ abstract contract DealsRegistry is
   ) internal virtual {}
 
   /**
+   * @dev Hook function that runs before the deal is rejected by a supplier.
+   * Allows inheriting smart contracts to perform custom logic.
+   * @param offerId The offerId of the deal
+   * @param reason Rejection reason
+   */
+  function _beforeReject(
+    bytes32 offerId,
+    bytes32 reason
+  ) internal virtual whenNotPaused {}
+
+  /**
+   * @dev Hook function that runs after the deal is rejected by s supplier.
+   * Allows inheriting smart contracts to perform custom logic.
+   * @param offerId The offerId of the deal
+   * @param reason Rejection reason
+   */
+  function _afterReject(bytes32 offerId, bytes32 reason) internal virtual {}
+
+  /**
    * @dev Hook function that runs before the deal is claimed.
    * Allows inheriting smart contracts to perform custom logic.
    * @param offerId The offerId of the deal
+   * @param buyer Address of the deal buyer
    */
-  function _beforeDealClaimed(
+  function _beforeClaim(
     bytes32 offerId,
     address buyer
   ) internal virtual whenNotPaused {}
@@ -301,8 +397,45 @@ abstract contract DealsRegistry is
    * @dev Hook function that runs after the deal is claimed.
    * Allows inheriting smart contracts to perform custom logic.
    * @param offerId The offerId of the deal
+   * @param buyer Address of the deal buyer
    */
-  function _afterDealClaimed(bytes32 offerId, address buyer) internal virtual {}
+  function _afterClaim(bytes32 offerId, address buyer) internal virtual {}
+
+  /**
+   * @dev Hook function that runs before the deal is checked in.
+   * Allows inheriting smart contracts to perform custom logic.
+   * @param offerId The offerId of the deal
+   * @param signs An array of signatures authorizing the check in of the deal
+   */
+  function _beforeCheckIn(
+    bytes32 offerId,
+    bytes[] memory signs
+  ) internal virtual whenNotPaused {}
+
+  /**
+   * @dev Hook function that runs after the deal is checked in.
+   * Allows inheriting smart contracts to perform custom logic.
+   * @param offerId The offerId of the deal
+   * @param signs An array of signatures authorizing the check in of the deal
+   */
+  function _afterCheckIn(
+    bytes32 offerId,
+    bytes[] memory signs
+  ) internal virtual {}
+
+  /**
+   * @dev Hook function that runs before the deal is canceled.
+   * Allows inheriting smart contracts to perform custom logic.
+   * @param offerId The offerId of the deal
+   */
+  function _beforeCancel(bytes32 offerId) internal virtual whenNotPaused {}
+
+  /**
+   * @dev Hook function that runs after the deal is canceled.
+   * Allows inheriting smart contracts to perform custom logic.
+   * @param offerId The offerId of the deal
+   */
+  function _afterCancel(bytes32 offerId) internal virtual {}
 
   /// Features
 
@@ -384,9 +517,9 @@ abstract contract DealsRegistry is
       revert InvalidPaymentId();
     }
 
-    _beforeDealCreated(offer, price, asset, signs);
+    _beforeCreate(offer, price, asset, signs);
 
-    // Check that the deal was not created by `_beforeDealCreated` hook
+    // Check that the deal was not created by `_beforeCreate` hook
     if (deals[offer.id].offer.id == offer.id) {
       revert DealAlreadyCreated();
     }
@@ -405,9 +538,144 @@ abstract contract DealsRegistry is
       revert DealFundsTransferFailed();
     }
 
-    emit DealCreated(offer.id, buyer);
+    emit Status(offer.id, DealStatus.Created, buyer);
 
-    _afterDealCreated(offer, price, asset, signs);
+    _afterCreate(offer, price, asset, signs);
+  }
+
+  /**
+   * @dev Rejects the deal
+   * @param offerId The deal offer Id
+   * @param reason Rejection reason
+   *
+   * Requirements:
+   *
+   * - the deal must exists
+   * - the deal must be in status DealStatus.Created
+   * - must be called by the signer address of the deal offer supplier
+   */
+  function reject(
+    bytes32 offerId,
+    bytes32 reason
+  )
+    external
+    dealExists(offerId)
+    inStatuses(offerId, allowedStatuses["reject"])
+    onlySigner(offerId)
+  {
+    Deal storage storedDeal = deals[offerId];
+
+    _beforeReject(offerId, reason);
+
+    storedDeal.status = DealStatus.Rejected;
+
+    if (
+      !IERC20(storedDeal.asset).transfer(storedDeal.buyer, storedDeal.price)
+    ) {
+      revert DealFundsTransferFailed();
+    }
+
+    emit Status(offerId, DealStatus.Rejected, _msgSender());
+
+    _afterReject(offerId, reason);
+  }
+
+  /**
+   * @dev Cancels the deal
+   * @param offerId The deal offer Id
+   * @param _cancelOptions Cancellation options from offer
+   *
+   * Requirements:
+   *
+   * - the deal must exists
+   * - the deal must be in status DealStatus.Created or DealStatus.Claimed
+   * - must be called by buyer
+   * - if the deal in DealStatus.Claimed status:
+   *   - if block.timestamp > checkIn time then zero refund
+   *   - cancellation rules must follow the rules defined by offer
+   */
+  function cancel(
+    bytes32 offerId,
+    CancelOption[] memory _cancelOptions
+  )
+    external
+    dealExists(offerId)
+    inStatuses(offerId, allowedStatuses["cancel"])
+  {
+    address sender = _msgSender();
+    Deal storage storedDeal = deals[offerId];
+
+    if (sender != storedDeal.buyer) {
+      revert NotAllowedAuth();
+    }
+
+    _beforeCancel((offerId));
+
+    if (storedDeal.status == DealStatus.Created) {
+      // Full refund
+      if (
+        !IERC20(storedDeal.asset).transfer(storedDeal.buyer, storedDeal.price)
+      ) {
+        revert DealFundsTransferFailed();
+      }
+    } else if (
+      storedDeal.status == DealStatus.Claimed &&
+      block.timestamp < storedDeal.offer.checkIn
+    ) {
+      if (storedDeal.offer.cancelHash != hash(_cancelOptions)) {
+        revert InvalidCancelOptions();
+      }
+      // Using offer cancellation rules
+      uint256 selectedTime;
+      uint256 selectedPenalty;
+
+      for (uint256 i = 0; i < _cancelOptions.length; i++) {
+        if (
+          block.timestamp >= _cancelOptions[i].time &&
+          (selectedTime == 0 || _cancelOptions[i].time < selectedTime)
+        ) {
+          selectedTime = _cancelOptions[i].time;
+          selectedPenalty = _cancelOptions[i].penalty;
+        }
+      }
+
+      if (selectedPenalty > 100) {
+        selectedPenalty = 100;
+      }
+
+      uint256 penaltyValue = storedDeal
+        .price
+        .mul(1000)
+        .mul(selectedPenalty)
+        .div(100)
+        .div(1000);
+
+      if (
+        !IERC20(storedDeal.asset).transfer(
+          storedDeal.buyer,
+          storedDeal.price.sub(penaltyValue)
+        )
+      ) {
+        revert DealFundsTransferFailed();
+      }
+
+      if (
+        penaltyValue > 0 &&
+        !IERC20(storedDeal.asset).transfer(
+          suppliers[storedDeal.offer.supplierId].owner,
+          penaltyValue
+        )
+      ) {
+        revert DealFundsTransferFailed();
+      }
+    } else {
+      revert NotAllowedStatus();
+    }
+
+    storedDeal.status = DealStatus.Cancelled;
+    emit Status(offerId, DealStatus.Cancelled, sender);
+
+    _afterCancel(offerId);
   }
 
   /**
@@ -420,38 +688,107 @@ abstract contract DealsRegistry is
    * - the deal must be in status DealStatus.Created
    * - must be called by the signer address of the deal offer supplier
    */
-  function claim(bytes32 offerId) external {
-    Deal storage claimingDeal = deals[offerId];
+  function claim(
+    bytes32 offerId
+  )
+    external
+    dealExists(offerId)
+    inStatuses(offerId, allowedStatuses["claim"])
+    onlySigner(offerId)
+  {
+    Deal storage storedDeal = deals[offerId];
 
-    // Deal must exists
-    if (claimingDeal.offer.id == bytes32(0)) {
-      revert DealNotFound();
+    _beforeClaim(offerId, storedDeal.buyer);
+
+    storedDeal.status = DealStatus.Claimed;
+    emit Status(offerId, DealStatus.Claimed, _msgSender());
+
+    _afterClaim(offerId, storedDeal.buyer);
+  }
+
+  /**
+   * @dev Checks in the deal
+   * @param offerId The deal offer Id
+   * @param signs Signatures
+   *
+   * Requirements:
+   *
+   * - the deal must exists
+   * - the deal must be in status DealStatus.Claimed
+   * - must be called by the supplier's signer or buyer's address
+   * - if called by the supplier's signer:
+   *   - a valid signature of suppliers's signer must be provided in signs[0]
+   *   - if before sign-in time: a valid signature of the buyer must be provided in signs[1]
+   * - if called buy buyer:
+   *   - a valid signature of the buyer must be provided in signs[0]
+   *   - a valid signature of suppliers's signer must be provided in signs[1]
+   */
+  function checkIn(
+    bytes32 offerId,
+    bytes[] memory signs
+  )
+    external
+    dealExists(offerId)
+    inStatuses(offerId, allowedStatuses["checkIn"])
+  {
+    Deal storage storedDeal = deals[offerId];
+    Supplier storage supplier = suppliers[storedDeal.offer.supplierId];
+
+    address sender = _msgSender();
+    bytes32 signInHash;
+
+    if (sender == supplier.signer) {
+      // The function is called by the supplier's signer
+      signInHash = _hashTypedDataV4(
+        hashCheckInOut(storedDeal.offer.id, supplier.signer)
+      );
+
+      // Checking ECDSA/AA signature of the suppliers's signer is valid
+      if (!supplier.signer.isValidSignatureNow(signInHash, signs[0])) {
+        revert InvalidOfferSignature();
+      }
+
+      // Before checkIn time of the offer a signature of the buyer is required
+      if (block.timestamp < storedDeal.offer.checkIn) {
+        signInHash = _hashTypedDataV4(
+          hashCheckInOut(storedDeal.offer.id, storedDeal.buyer)
+        );
+
+        // Checking ECDSA/AA signature of the buyer is valid
+        if (!storedDeal.buyer.isValidSignatureNow(signInHash, signs[1])) {
+          revert InvalidOfferSignature();
+        }
+      }
+    } else if (sender == storedDeal.buyer) {
+      signInHash = _hashTypedDataV4(
+        hashCheckInOut(storedDeal.offer.id, storedDeal.buyer)
+      );
+
+      // Checking ECDSA/AA signature of the suppliers's signer is valid
+      if (!storedDeal.buyer.isValidSignatureNow(signInHash, signs[0])) {
+        revert InvalidOfferSignature();
+      }
+
+      signInHash = _hashTypedDataV4(
+        hashCheckInOut(storedDeal.offer.id, supplier.signer)
+      );
+
+      // Checking ECDSA/AA signature of the buyer is valid
+      if (!supplier.signer.isValidSignatureNow(signInHash, signs[1])) {
+        revert InvalidOfferSignature();
+      }
+    } else {
+      revert NotAllowedAuth();
     }
 
-    // Deal should not be claimed
-    if (claimingDeal.status != DealStatus.Created) {
-      revert DealNotCreated();
-    }
+    // Execute before checkIn hook
+    _beforeCheckIn(offerId, signs);
 
-    address signer = _msgSender();
-    Supplier storage supplier = suppliers[claimingDeal.offer.supplierId];
+    storedDeal.status = DealStatus.CheckedId;
+    emit Status(offerId, DealStatus.CheckedId, sender);
 
-    // Registered signer of the supplier is allowed to claim the deal
-    if (signer != supplier.signer) {
-      revert NotAllowed();
-    }
-
-    _beforeDealClaimed(offerId, claimingDeal.buyer);
-
-    // Prevent claiming of the deal inside the `_beforeDealClaimed` hook
-    if (claimingDeal.status == DealStatus.Claimed) {
-      revert DealAlreadyClaimed();
-    }
-
-    claimingDeal.status = DealStatus.Claimed;
-    emit DealClaimed(offerId, signer);
-
-    _afterDealClaimed(offerId, claimingDeal.buyer);
+    // Execute after checkIn hook
+    _afterCheckIn(offerId, signs);
   }
 
   uint256[50] private __gap;

@@ -12,8 +12,11 @@ import "./DealsRegistry.sol";
  * @custom:security-contact security@windingtree.com
  */
 contract Market is Ownable, Pausable, DealsRegistry, ERC721Token {
-  /// Mapping of tokenId on offer Id
+  /// @dev Mapping of token Id on offer Id
   mapping(uint256 => bytes32) public tokenOffers;
+
+  /// @dev Mapping of offer Id on token Id
+  mapping(bytes32 => uint256) public offerTokens;
 
   /// Throws when NFT transfer is not allowed by offer rule
   error TokenTransferNotAllowed();
@@ -72,52 +75,69 @@ contract Market is Ownable, Pausable, DealsRegistry, ERC721Token {
   /// Deals features
 
   /**
-   * @dev Executes before a deal is created
+   * @dev Executes logic before a deal is created
    * @param offer The details of the offer
    * @param price The price of the offer
    * @param asset The address of the asset
    * @param signs The signatures of the offer
    */
-  function _beforeDealCreated(
+  function _beforeCreate(
     Offer memory offer,
     uint256 price,
     address asset,
     bytes[] memory signs
   ) internal override(DealsRegistry) whenNotPaused {
-    super._beforeDealCreated(offer, price, asset, signs);
+    super._beforeCreate(offer, price, asset, signs);
   }
 
   /**
-   * @dev Executes after a deal is created
+   * @dev Executes logic after a deal is created
    * @param offer The details of the offer
    * @param price The price of the offer
    * @param asset The address of the asset
    * @param signs The signatures of the offer
    */
-  function _afterDealCreated(
+  function _afterCreate(
     Offer memory offer,
     uint256 price,
     address asset,
     bytes[] memory signs
   ) internal override(DealsRegistry) {
     // After-deal logic
-    super._afterDealCreated(offer, price, asset, signs);
+    super._afterCreate(offer, price, asset, signs);
   }
 
   /**
-   * @dev Executes after a deal is claimed
+   * @dev Executes logic after a deal is claimed
    * @param offerId The ID of the offer
    * @param buyer The address of the buyer
    */
-  function _afterDealClaimed(
+  function _afterClaim(
     bytes32 offerId,
     address buyer
   ) internal override(DealsRegistry) {
     // Minting of a token
     uint256 tokenId = safeMint(buyer);
-    // Create a map of tokenId on offer Id
+    // Create a map of token Id on offer Id
     tokenOffers[tokenId] = offerId;
-    super._afterDealClaimed(offerId, buyer);
+    // Create a map of offer Id on token Id
+    offerTokens[offerId] = tokenId;
+    super._afterClaim(offerId, buyer);
+  }
+
+  /**
+   * @dev Executes logic before a deal is canceled
+   * @param offerId The ID of the offer
+   */
+  function _beforeCancel(bytes32 offerId) internal override(DealsRegistry) {
+    if (deals[offerId].status != DealStatus.Created) {
+      uint256 tokenId = offerTokens[offerId];
+      safeBurn(tokenId);
+      delete tokenOffers[tokenId];
+      delete offerTokens[offerId];
+    }
+
+    super._beforeCancel(offerId);
   }
 
   /// ERC721 features
@@ -155,8 +175,8 @@ contract Market is Ownable, Pausable, DealsRegistry, ERC721Token {
     uint256 tokenId,
     uint256 batchSize
   ) internal override(ERC721Token) whenNotPaused {
-    // Execute the logic when the function called not from `_mint`
-    if (from != address(0)) {
+    // Execute the logic when the function called not from `_mint` or `_burn`
+    if (from != address(0) && to != address(0)) {
       bytes32 offerId = tokenOffers[tokenId];
 
       if (offerId == bytes32(0)) {
