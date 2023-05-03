@@ -4,6 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { expect } from 'chai';
 import { BigNumber, constants } from 'ethers';
+import { ethers } from 'hardhat';
 import { MockERC20Dec18Permit, Market } from '../../typechain';
 import { TransferEventObject } from '../../typechain/contracts/Market';
 import {
@@ -14,8 +15,20 @@ import {
   createSupplierId,
   createPermitSignature,
   getEventArgs,
+  createCheckInOutSignature,
+  getCancelPenalty,
 } from './utils';
 import { User, minDeposit, setup } from './setup';
+
+enum DealStatus {
+  Created, // Just created
+  Claimed, // Claimed by the supplier
+  Rejected, // Rejected by the supplier
+  Cancelled, // Cancelled by the buyer
+  CheckedId, // Checked In
+  CheckedOut, // Checked Out
+  Disputed, // Dispute started
+}
 
 const registerSupplier = async (
   market: Market,
@@ -139,11 +152,10 @@ describe('Market contract', () => {
 
     describe('#toggleSupplier(bytes32); #isSupplierEnabled(bytes32)', () => {
       it('should throw if called not by a owner', async () => {
-        await expect(
-          owner.market.toggleSupplier(supplierId, {
-            gasLimit: 5000000,
-          }),
-        ).to.revertedWithCustomError(owner.market, 'NotSupplierOwner');
+        await expect(owner.market.toggleSupplier(supplierId)).to.revertedWithCustomError(
+          owner.market,
+          'NotSupplierOwner',
+        );
       });
 
       it('should toggle the supplier state', async () => {
@@ -156,9 +168,7 @@ describe('Market contract', () => {
     describe('#changeSigner(bytes32,address)', () => {
       it('should throw if called not by a owner', async () => {
         await expect(
-          owner.market.changeSigner(supplierId, owner.address, {
-            gasLimit: 5000000,
-          }),
+          owner.market.changeSigner(supplierId, owner.address),
         ).to.revertedWithCustomError(owner.market, 'NotSupplierOwner');
       });
 
@@ -183,9 +193,7 @@ describe('Market contract', () => {
 
       it('should throw on attempt to register twice', async () => {
         await expect(
-          supplierOwner.market.register(supplierSalt, supplierSigner.address, {
-            gasLimit: 5000000,
-          }),
+          supplierOwner.market.register(supplierSalt, supplierSigner.address),
         ).to.revertedWithCustomError(supplierOwner.market, 'SupplierExists');
       });
     });
@@ -211,22 +219,13 @@ describe('Market contract', () => {
 
         await supplierOwner.lif.approve(supplierOwner.market.address, notEnoughValue);
         await expect(
-          supplierOwner.market['addDeposit(bytes32,uint256)'](
-            supplierId,
-            notEnoughValue,
-            {
-              gasLimit: 5000000,
-            },
-          ),
+          supplierOwner.market['addDeposit(bytes32,uint256)'](supplierId, notEnoughValue),
         ).to.rejected;
       });
 
       it('should throw if tokens not approved', async () => {
-        await expect(
-          supplierOwner.market['addDeposit(bytes32,uint256)'](supplierId, '1', {
-            gasLimit: 5000000,
-          }),
-        ).to.rejected;
+        await expect(supplierOwner.market['addDeposit(bytes32,uint256)'](supplierId, '1'))
+          .to.rejected;
       });
 
       it('should add deposit', async () => {
@@ -252,9 +251,6 @@ describe('Market contract', () => {
             value,
             deadline,
             constants.HashZero,
-            {
-              gasLimit: 5000000,
-            },
           ),
         ).to.revertedWithCustomError(supplierOwner.market, 'InvalidSignature');
       });
@@ -277,9 +273,6 @@ describe('Market contract', () => {
           value,
           deadline,
           signature,
-          {
-            gasLimit: 5000000,
-          },
         );
         expect(await supplierOwner.market.balanceOfSupplier(supplierId)).to.eq(
           minDeposit.add(value),
@@ -294,9 +287,6 @@ describe('Market contract', () => {
           supplierOwner.market.withdrawDeposit(
             supplierId,
             balance.add(BigNumber.from('1')),
-            {
-              gasLimit: 5000000,
-            },
           ),
         ).to.rejected;
       });
@@ -339,9 +329,7 @@ describe('Market contract', () => {
         supplierSigner.signer,
         'Market',
         '1',
-        (
-          await supplierSigner.market.provider.getNetwork()
-        ).chainId,
+        BigNumber.from((await supplierSigner.market.provider.getNetwork()).chainId),
         supplierSigner.market.address,
         supplierSigner.erc20.address,
       );
@@ -351,9 +339,7 @@ describe('Market contract', () => {
         supplierSigner.signer,
         'Market',
         '1',
-        (
-          await supplierSigner.market.provider.getNetwork()
-        ).chainId,
+        BigNumber.from((await supplierSigner.market.provider.getNetwork()).chainId),
         supplierSigner.market.address,
         supplierSigner.erc20.address,
       );
@@ -362,23 +348,15 @@ describe('Market contract', () => {
     describe('#deal(Offer,PaymentOption[],bytes32,bytes[])', () => {
       it('should throw if invalid payment options provided', async () => {
         await expect(
-          buyer.market.deal(offer.payload, [], offer.payment[0].id, [offer.signature], {
-            gasLimit: 5000000,
-          }),
+          buyer.market.deal(offer.payload, [], offer.payment[0].id, [offer.signature]),
         ).to.revertedWithCustomError(buyer.market, 'InvalidPaymentOptions');
       });
 
       it('should throw if invalid payment option Id provided', async () => {
         await expect(
-          buyer.market.deal(
-            offer.payload,
-            offer.payment,
-            constants.HashZero,
-            [offer.signature],
-            {
-              gasLimit: 5000000,
-            },
-          ),
+          buyer.market.deal(offer.payload, offer.payment, constants.HashZero, [
+            offer.signature,
+          ]),
         ).to.revertedWithCustomError(buyer.market, 'InvalidPaymentId');
       });
 
@@ -394,8 +372,8 @@ describe('Market contract', () => {
           [offer.signature],
         );
         await expect(tx)
-          .to.emit(buyer.market, 'DealCreated')
-          .withArgs(offer.payload.id, buyer.address);
+          .to.emit(buyer.market, 'Status')
+          .withArgs(offer.payload.id, 0, buyer.address);
 
         const {
           offer: contractOffer,
@@ -420,15 +398,9 @@ describe('Market contract', () => {
 
       it('should throw if attempting to create the same deal', async () => {
         await expect(
-          buyer.market.deal(
-            offer.payload,
-            offer.payment,
-            offer.payment[0].id,
-            [offer.signature],
-            {
-              gasLimit: 5000000,
-            },
-          ),
+          buyer.market.deal(offer.payload, offer.payment, offer.payment[0].id, [
+            offer.signature,
+          ]),
         ).to.revertedWithCustomError(buyer.market, 'DealExists');
       });
 
@@ -439,9 +411,6 @@ describe('Market contract', () => {
             offerNotRegistered.payment,
             offerNotRegistered.payment[0].id,
             [offerNotRegistered.signature],
-            {
-              gasLimit: 5000000,
-            },
           ),
         ).to.revertedWithCustomError(buyer.market, 'InvalidSupplier');
       });
@@ -453,9 +422,6 @@ describe('Market contract', () => {
             offer.payment,
             offer.payment[0].id,
             [offerNotRegistered.signature], // Invalid
-            {
-              gasLimit: 5000000,
-            },
           ),
         ).to.revertedWithCustomError(buyer.market, 'InvalidOfferSignature');
       });
@@ -465,15 +431,9 @@ describe('Market contract', () => {
         expect(await supplierOwner.market.isSupplierEnabled(offer.payload.supplierId)).to
           .false;
         await expect(
-          buyer.market.deal(
-            offer.payload,
-            offer.payment,
-            offer.payment[0].id,
-            [offer.signature],
-            {
-              gasLimit: 5000000,
-            },
-          ),
+          buyer.market.deal(offer.payload, offer.payment, offer.payment[0].id, [
+            offer.signature,
+          ]),
         ).to.revertedWithCustomError(buyer.market, 'DisabledSupplier');
       });
     });
@@ -488,10 +448,8 @@ describe('Market contract', () => {
       describe('without deal', () => {
         it('should throw if deal not found', async () => {
           await expect(
-            supplierSigner.market.claim(randomId(), {
-              gasLimit: 5000000,
-            }),
-          ).to.rejected;
+            supplierSigner.market.claim(randomId()),
+          ).to.revertedWithCustomError(supplierSigner.market, 'DealNotFound');
         });
       });
 
@@ -504,9 +462,7 @@ describe('Market contract', () => {
             supplierSigner.signer,
             'Market',
             '1',
-            (
-              await supplierSigner.market.provider.getNetwork()
-            ).chainId,
+            BigNumber.from((await supplierSigner.market.provider.getNetwork()).chainId),
             supplierSigner.market.address,
             supplierSigner.erc20.address,
           );
@@ -517,21 +473,20 @@ describe('Market contract', () => {
         });
 
         it('should throw called not by signer', async () => {
-          await expect(
-            buyer.market.claim(offer.payload.id, {
-              gasLimit: 5000000,
-            }),
-          ).to.revertedWithCustomError(buyer.market, 'NotAllowed');
+          await expect(buyer.market.claim(offer.payload.id)).to.revertedWithCustomError(
+            buyer.market,
+            'NotAllowedAuth',
+          );
         });
 
         it('should claim the deal', async () => {
           const tx = await supplierSigner.market.claim(offer.payload.id);
           await expect(tx)
-            .to.emit(supplierSigner.market, 'DealClaimed')
-            .withArgs(offer.payload.id, supplierSigner.address);
+            .to.emit(supplierSigner.market, 'Status')
+            .withArgs(offer.payload.id, DealStatus.Claimed, supplierSigner.address);
           await expect(tx)
             .to.emit(supplierSigner.market, 'Transfer')
-            .withArgs(constants.AddressZero, buyer.address, 0);
+            .withArgs(constants.AddressZero, buyer.address, DealStatus.Created);
           expect(await supplierSigner.market.resolveTokenId(0)).to.eq(offer.payload.id);
           const {
             offer: contractOffer,
@@ -544,16 +499,14 @@ describe('Market contract', () => {
           structEqual(contractOffer, offer.payload);
           expect(price).to.eq(offer.payment[0].price);
           expect(asset).to.eq(offer.payment[0].asset);
-          expect(status).to.eq(1);
+          expect(status).to.eq(DealStatus.Claimed);
         });
 
         it('should throw id deal "not-created"', async () => {
           await supplierSigner.market.claim(offer.payload.id);
           await expect(
-            supplierSigner.market.claim(offer.payload.id, {
-              gasLimit: 5000000,
-            }),
-          ).to.revertedWithCustomError(supplierSigner.market, 'DealNotCreated');
+            supplierSigner.market.claim(offer.payload.id),
+          ).to.revertedWithCustomError(supplierSigner.market, 'NotAllowedStatus');
         });
       });
     });
@@ -568,9 +521,7 @@ describe('Market contract', () => {
           supplierSigner.signer,
           'Market',
           '1',
-          (
-            await supplierSigner.market.provider.getNetwork()
-          ).chainId,
+          BigNumber.from((await supplierSigner.market.provider.getNetwork()).chainId),
           supplierSigner.market.address,
           supplierSigner.erc20.address,
           true,
@@ -590,7 +541,7 @@ describe('Market contract', () => {
       it('should transfer', async () => {
         expect(await buyer.market.ownerOf(tokenId)).to.eq(buyer.address);
         const { status } = await buyer.market.deals(offer.payload.id);
-        expect(status).to.eq(1); // claimed
+        expect(status).to.eq(DealStatus.Claimed);
         const tx = await buyer.market.transferFrom(
           buyer.address,
           notOwner.address,
@@ -600,6 +551,362 @@ describe('Market contract', () => {
           .to.emit(buyer.market, 'Transfer')
           .withArgs(buyer.address, notOwner.address, tokenId);
         expect(await buyer.market.ownerOf(tokenId)).to.eq(notOwner.address);
+      });
+    });
+
+    describe('#reject(bytes32,bytes32)', () => {
+      let offer: Offer;
+
+      beforeEach(async () => {
+        offer = await buildRandomOffer(
+          supplierId,
+          supplierSigner.signer,
+          'Market',
+          '1',
+          BigNumber.from((await supplierSigner.market.provider.getNetwork()).chainId),
+          supplierSigner.market.address,
+          supplierSigner.erc20.address,
+        );
+        await buyer.erc20.approve(buyer.market.address, offer.payment[0].price);
+        await buyer.market.deal(offer.payload, offer.payment, offer.payment[0].id, [
+          offer.signature,
+        ]);
+      });
+
+      it('should throw if a deal is not found', async () => {
+        await expect(
+          supplierSigner.market.reject(constants.HashZero, constants.HashZero),
+        ).to.revertedWithCustomError(buyer.market, 'DealNotFound');
+      });
+
+      it('should throw if a deal is claimed already', async () => {
+        await supplierSigner.market.claim(offer.payload.id);
+        await expect(
+          supplierSigner.market.reject(offer.payload.id, constants.HashZero),
+        ).to.revertedWithCustomError(buyer.market, 'NotAllowedStatus');
+      });
+
+      it('should reject a deal', async () => {
+        const balanceBefore = await buyer.erc20.balanceOf(buyer.address);
+        await supplierSigner.market.reject(offer.payload.id, constants.HashZero);
+        expect(await buyer.erc20.balanceOf(buyer.address)).to.eq(
+          balanceBefore.add(offer.payment[0].price),
+        );
+        const { status } = await supplierSigner.market.deals(offer.payload.id);
+        expect(status).to.eq(DealStatus.Rejected);
+      });
+
+      it('should throw if a deal is rejected already', async () => {
+        await supplierSigner.market.reject(offer.payload.id, constants.HashZero);
+        await expect(
+          supplierSigner.market.reject(offer.payload.id, constants.HashZero),
+        ).to.revertedWithCustomError(buyer.market, 'NotAllowedStatus');
+      });
+    });
+
+    describe('#checkIn(bytes32,bytes[])', () => {
+      let offer: Offer;
+
+      beforeEach(async () => {
+        offer = await buildRandomOffer(
+          supplierId,
+          supplierSigner.signer,
+          'Market',
+          '1',
+          BigNumber.from((await supplierSigner.market.provider.getNetwork()).chainId),
+          supplierSigner.market.address,
+          supplierSigner.erc20.address,
+        );
+        await buyer.erc20.approve(buyer.market.address, offer.payment[0].price);
+        await buyer.market.deal(offer.payload, offer.payment, offer.payment[0].id, [
+          offer.signature,
+        ]);
+      });
+
+      it('should throw if a deal is not found', async () => {
+        await expect(
+          buyer.market.checkIn(constants.HashZero, [constants.HashZero]),
+        ).to.revertedWithCustomError(buyer.market, 'DealNotFound');
+      });
+
+      it('should throw if a deal is not claimed yet', async () => {
+        await expect(
+          buyer.market.checkIn(
+            offer.payload.id,
+            [constants.HashZero], // it doesn't matter in this case
+          ),
+        ).to.revertedWithCustomError(buyer.market, 'NotAllowedStatus');
+      });
+
+      it('should throw if a called by unknown user', async () => {
+        await supplierSigner.market.claim(offer.payload.id);
+        await expect(
+          notOwner.market.checkIn(
+            offer.payload.id,
+            [constants.HashZero], // it doesn't matter in this case
+          ),
+        ).to.revertedWithCustomError(buyer.market, 'NotAllowedAuth');
+      });
+
+      describe('check in a deal by a buyer', () => {
+        it('should throw if invalid signature provided', async () => {
+          await supplierSigner.market.claim(offer.payload.id);
+          await expect(
+            buyer.market.checkIn(offer.payload.id, [constants.HashZero]),
+          ).to.revertedWithCustomError(buyer.market, 'InvalidOfferSignature');
+        });
+
+        it('should throw if a buyers signature signed by unknown signer', async () => {
+          await supplierSigner.market.claim(offer.payload.id);
+          const signature = await createCheckInOutSignature(
+            notOwner.signer, // not a buyer
+            offer.payload.id,
+            'Market',
+            '1',
+            BigNumber.from(await notOwner.signer.getChainId()),
+            notOwner.market.address,
+          );
+          await expect(
+            buyer.market.checkIn(offer.payload.id, [signature]),
+          ).to.revertedWithCustomError(buyer.market, 'InvalidOfferSignature');
+        });
+
+        it('should throw if a suppliers signature signed by unknown signer', async () => {
+          await supplierSigner.market.claim(offer.payload.id);
+          const signBuyer = await createCheckInOutSignature(
+            buyer.signer, // not a supplier
+            offer.payload.id,
+            'Market',
+            '1',
+            BigNumber.from(await buyer.signer.getChainId()),
+            buyer.market.address,
+          );
+          const signSupplier = await createCheckInOutSignature(
+            notOwner.signer, // not a supplier
+            offer.payload.id,
+            'Market',
+            '1',
+            BigNumber.from(await notOwner.signer.getChainId()),
+            notOwner.market.address,
+          );
+          await expect(
+            buyer.market.checkIn(offer.payload.id, [signBuyer, signSupplier]),
+          ).to.revertedWithCustomError(buyer.market, 'InvalidOfferSignature');
+        });
+
+        it('should check in', async () => {
+          await supplierSigner.market.claim(offer.payload.id);
+          const signBuyer = await createCheckInOutSignature(
+            buyer.signer,
+            offer.payload.id,
+            'Market',
+            '1',
+            BigNumber.from(await buyer.signer.getChainId()),
+            buyer.market.address,
+          );
+          const signSupplier = await createCheckInOutSignature(
+            supplierSigner.signer,
+            offer.payload.id,
+            'Market',
+            '1',
+            BigNumber.from(await supplierSigner.signer.getChainId()),
+            supplierSigner.market.address,
+          );
+          const tx = await buyer.market.checkIn(offer.payload.id, [
+            signBuyer,
+            signSupplier,
+          ]);
+          await expect(tx)
+            .to.emit(buyer.market, 'Status')
+            .withArgs(offer.payload.id, DealStatus.CheckedId, buyer.address);
+          const { status } = await buyer.market.deals(offer.payload.id);
+          expect(status).to.eq(DealStatus.CheckedId);
+        });
+      });
+
+      describe('check in a deal by a supplier', () => {
+        it('should throw if invalid signature provided', async () => {
+          await supplierSigner.market.claim(offer.payload.id);
+          await expect(
+            supplierSigner.market.checkIn(offer.payload.id, [constants.HashZero]),
+          ).to.revertedWithCustomError(buyer.market, 'InvalidOfferSignature');
+        });
+
+        it('should check in before checkIn date', async () => {
+          await supplierSigner.market.claim(offer.payload.id);
+          const signSupplier = await createCheckInOutSignature(
+            supplierSigner.signer,
+            offer.payload.id,
+            'Market',
+            '1',
+            BigNumber.from(await supplierSigner.signer.getChainId()),
+            supplierSigner.market.address,
+          );
+          const signBuyer = await createCheckInOutSignature(
+            buyer.signer,
+            offer.payload.id,
+            'Market',
+            '1',
+            BigNumber.from(await buyer.signer.getChainId()),
+            buyer.market.address,
+          );
+          const tx = await supplierSigner.market.checkIn(offer.payload.id, [
+            signSupplier,
+            signBuyer,
+          ]);
+          await expect(tx)
+            .to.emit(supplierSigner.market, 'Status')
+            .withArgs(offer.payload.id, DealStatus.CheckedId, supplierSigner.address);
+          const { status } = await buyer.market.deals(offer.payload.id);
+          expect(status).to.eq(DealStatus.CheckedId);
+        });
+
+        it('should check in after checkIn date', async () => {
+          await supplierSigner.market.claim(offer.payload.id);
+          const signSupplier = await createCheckInOutSignature(
+            supplierSigner.signer,
+            offer.payload.id,
+            'Market',
+            '1',
+            BigNumber.from(await supplierSigner.signer.getChainId()),
+            supplierSigner.market.address,
+          );
+          await ethers.provider.send('evm_setNextBlockTimestamp', [
+            Number(offer.payload.checkIn.toString()),
+          ]);
+          await ethers.provider.send('evm_mine', []);
+          const tx = await supplierSigner.market.checkIn(offer.payload.id, [
+            signSupplier,
+          ]);
+          await expect(tx)
+            .to.emit(supplierSigner.market, 'Status')
+            .withArgs(offer.payload.id, DealStatus.CheckedId, supplierSigner.address);
+          const { status } = await buyer.market.deals(offer.payload.id);
+          expect(status).to.eq(DealStatus.CheckedId);
+        });
+      });
+    });
+
+    describe('#cancel(bytes32,CancelOption[])', () => {
+      let offer: Offer;
+
+      beforeEach(async () => {
+        const blockTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
+        offer = await buildRandomOffer(
+          supplierId,
+          supplierSigner.signer,
+          'Market',
+          '1',
+          BigNumber.from((await supplierSigner.market.provider.getNetwork()).chainId),
+          supplierSigner.market.address,
+          supplierSigner.erc20.address,
+          true,
+          BigNumber.from(blockTimestamp),
+        );
+        await buyer.erc20.approve(buyer.market.address, offer.payment[0].price);
+        await buyer.market.deal(offer.payload, offer.payment, offer.payment[0].id, [
+          offer.signature,
+        ]);
+      });
+
+      it('should throw if a deal is not found', async () => {
+        await expect(
+          buyer.market.cancel(constants.HashZero, []),
+        ).to.revertedWithCustomError(buyer.market, 'DealNotFound');
+      });
+
+      it('should throw if a deal is checked-in', async () => {
+        await supplierSigner.market.claim(offer.payload.id);
+        const signSupplier = await createCheckInOutSignature(
+          supplierSigner.signer,
+          offer.payload.id,
+          'Market',
+          '1',
+          BigNumber.from(await supplierSigner.signer.getChainId()),
+          supplierSigner.market.address,
+        );
+        const signBuyer = await createCheckInOutSignature(
+          buyer.signer,
+          offer.payload.id,
+          'Market',
+          '1',
+          BigNumber.from(await buyer.signer.getChainId()),
+          buyer.market.address,
+        );
+        await supplierSigner.market.checkIn(offer.payload.id, [signSupplier, signBuyer]);
+        await expect(
+          buyer.market.cancel(offer.payload.id, []),
+        ).to.revertedWithCustomError(buyer.market, 'NotAllowedStatus');
+      });
+
+      it('should throw if called not by buyer', async () => {
+        await expect(
+          supplierSigner.market.cancel(offer.payload.id, []),
+        ).to.revertedWithCustomError(buyer.market, 'NotAllowedAuth');
+      });
+
+      it('should cancel non-claimed deal by buyer', async () => {
+        const balanceBefore = await buyer.erc20.balanceOf(buyer.address);
+        const tx = await buyer.market.cancel(offer.payload.id, []);
+        await expect(tx)
+          .to.emit(supplierSigner.market, 'Status')
+          .withArgs(offer.payload.id, DealStatus.Cancelled, buyer.address);
+        const { status } = await buyer.market.deals(offer.payload.id);
+        expect(status).to.eq(DealStatus.Cancelled);
+        expect(await buyer.erc20.balanceOf(buyer.address)).to.eq(
+          balanceBefore.add(offer.payment[0].price),
+        );
+      });
+
+      it('should throw if a deal is cancelled', async () => {
+        await buyer.market.cancel(offer.payload.id, []);
+        await expect(
+          buyer.market.cancel(offer.payload.id, []),
+        ).to.revertedWithCustomError(buyer.market, 'NotAllowedStatus');
+      });
+
+      it('should throw if an invalid cancellation options provided', async () => {
+        await supplierSigner.market.claim(offer.payload.id);
+        await expect(
+          buyer.market.cancel(offer.payload.id, []),
+        ).to.revertedWithCustomError(buyer.market, 'InvalidCancelOptions');
+      });
+
+      it('should cancel claimed deal according to the cancellation options', async () => {
+        await supplierSigner.market.claim(offer.payload.id);
+        let blockTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
+        await ethers.provider.send('evm_setNextBlockTimestamp', [blockTimestamp + 3000]);
+        await ethers.provider.send('evm_mine', []);
+        blockTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
+        const penalty = getCancelPenalty(offer.cancel, BigNumber.from(blockTimestamp));
+        const multiplier = BigNumber.from(1000);
+        const penaltyValue = offer.payment[0].price
+          .mul(multiplier)
+          .mul(penalty)
+          .div(BigNumber.from(100))
+          .div(multiplier);
+        const balanceBefore = await buyer.erc20.balanceOf(buyer.address);
+        const balanceSupplierBefore = await supplierOwner.erc20.balanceOf(
+          supplierOwner.address,
+        );
+        const tokenId = await buyer.market.offerTokens(offer.payload.id);
+        const tx = await buyer.market.cancel(offer.payload.id, offer.cancel);
+        await expect(tx)
+          .to.emit(supplierSigner.market, 'Status')
+          .withArgs(offer.payload.id, DealStatus.Cancelled, buyer.address);
+        const { status } = await buyer.market.deals(offer.payload.id);
+        expect(status).to.eq(DealStatus.Cancelled);
+        expect(await buyer.erc20.balanceOf(buyer.address)).to.eq(
+          balanceBefore.add(offer.payment[0].price.sub(penaltyValue)),
+        );
+        expect(await supplierOwner.erc20.balanceOf(supplierOwner.address)).to.eq(
+          balanceSupplierBefore.add(penaltyValue),
+        );
+        await expect(tx)
+          .to.emit(supplierSigner.market, 'Transfer')
+          .withArgs(buyer.address, constants.AddressZero, tokenId);
+        expect(await buyer.market.offerTokens(offer.payload.id)).to.eq(0);
+        expect(await buyer.market.tokenOffers(tokenId)).to.eq(constants.HashZero);
       });
     });
   });

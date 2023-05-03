@@ -2,7 +2,6 @@ import { expect } from 'chai';
 import {
   utils,
   BigNumber,
-  BigNumberish,
   TypedDataField,
   VoidSigner,
   ContractTransaction,
@@ -20,34 +19,34 @@ export const nonces: Record<string, number> = {
 
 export interface Request {
   id: string;
-  expire: BigNumberish;
-  nonce: BigNumberish;
+  expire: BigNumber;
+  nonce: BigNumber;
   topic: string;
   query: unknown;
 }
 
 export interface PaymentOption {
   id: string;
-  price: BigNumberish;
+  price: BigNumber;
   asset: string;
 }
 
 export interface CancelOption {
-  time: BigNumberish;
-  penalty: BigNumberish;
+  time: BigNumber;
+  penalty: BigNumber;
 }
 
 export interface OfferPayload {
   id: string;
-  expire: BigNumberish;
+  expire: BigNumber;
   supplierId: string;
-  chainId: BigNumberish;
+  chainId: BigNumber;
   requestHash: string;
   optionsHash: string;
   paymentHash: string;
   cancelHash: string;
   transferable: boolean;
-  checkIn: BigNumberish;
+  checkIn: BigNumber;
 }
 
 export interface Offer {
@@ -140,6 +139,12 @@ export const hashOfferPayload = (payload: OfferPayload): string =>
     ],
   );
 
+export const hashCheckInOut = (offerId: string, signer: string): string =>
+  utils.solidityKeccak256(
+    ['bytes32', 'bytes32', 'address'],
+    [OFFER_TYPE_HASH, offerId, signer],
+  );
+
 export const offerEip712Types: Record<string, Array<TypedDataField>> = {
   Offer: [
     {
@@ -185,20 +190,34 @@ export const offerEip712Types: Record<string, Array<TypedDataField>> = {
   ],
 };
 
+export const checkInOutTypes: Record<string, Array<TypedDataField>> = {
+  Voucher: [
+    {
+      name: 'id',
+      type: 'bytes32',
+    },
+    {
+      name: 'signer',
+      type: 'address',
+    },
+  ],
+};
+
 export const buildRandomOffer = async (
   supplierId: string,
   signer: VoidSigner,
   name: string,
   version: string,
-  chainId: BigNumberish,
+  chainId: BigNumber,
   verifyingContract: string,
   erc20address: string,
   transferableOverride?: boolean,
+  timestamp = BigNumber.from(Math.round(Date.now() / 1000)),
 ): Promise<Offer> => {
   const request: Request = {
     id: randomId(),
-    expire: BigNumber.from(Math.round(Date.now() / 1000) + 10000),
-    nonce: nonces.request++,
+    expire: timestamp.add(BigNumber.from(3600)),
+    nonce: BigNumber.from(nonces.request++),
     topic: Math.random().toString(),
     query: {},
   };
@@ -206,23 +225,27 @@ export const buildRandomOffer = async (
   const payment: PaymentOption[] = [
     {
       id: randomId(),
-      price: BigNumber.from('1'),
+      price: BigNumber.from('10'),
       asset: erc20address,
     },
   ];
 
-  const checkInTime = BigNumber.from(Math.round(Date.now() / 1000) + 100000);
+  const checkInTime = timestamp.add(BigNumber.from(3600));
 
   const cancel: CancelOption[] = [
     {
-      time: checkInTime,
+      time: checkInTime.sub(BigNumber.from(1200)),
+      penalty: BigNumber.from('50'),
+    },
+    {
+      time: checkInTime.sub(BigNumber.from(60)),
       penalty: BigNumber.from('100'),
     },
   ];
 
   const offerPayload: OfferPayload = {
     id: randomId(),
-    expire: BigNumber.from(Math.round(Date.now() / 1000) + 20000),
+    expire: timestamp.add(BigNumber.from(1200)),
     supplierId: supplierId,
     chainId: BigNumber.from(270),
     requestHash: hashObject(request),
@@ -256,12 +279,27 @@ export const buildRandomOffer = async (
   return offer;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const structEqual = (struct: { [k: string]: any }, obj: { [k: string]: any }) => {
-  for (const key of Object.keys(obj)) {
-    expect(obj[key]).to.eq(struct[key]);
-  }
-};
+export const createCheckInOutSignature = async (
+  signer: VoidSigner,
+  offerId: string,
+  name: string,
+  version: string,
+  chainId: BigNumber,
+  verifyingContract: string,
+): Promise<string> =>
+  await signer._signTypedData(
+    {
+      name,
+      version,
+      chainId,
+      verifyingContract,
+    },
+    checkInOutTypes,
+    {
+      id: offerId,
+      signer: signer.address,
+    },
+  );
 
 export const createPermitSignature = async (
   signer: VoidSigner,
@@ -315,6 +353,30 @@ export const createPermitSignature = async (
       deadline,
     },
   );
+};
+
+export const getCancelPenalty = (options: CancelOption[], timestamp: BigNumber) => {
+  let selectedTime = BigNumber.from(0);
+  let selectedPenalty = BigNumber.from(0);
+
+  for (const option of options) {
+    if (
+      timestamp.gte(option.time) &&
+      (selectedTime.isZero() || option.time.lt(selectedTime))
+    ) {
+      selectedTime = option.time;
+      selectedPenalty = option.penalty;
+    }
+  }
+
+  return selectedPenalty.lte(BigNumber.from(100)) ? selectedPenalty : BigNumber.from(100);
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const structEqual = (struct: { [k: string]: any }, obj: { [k: string]: any }) => {
+  for (const key of Object.keys(obj)) {
+    expect(obj[key]).to.eq(struct[key]);
+  }
 };
 
 export const getEventArgs = async <T>(tx: ContractTransaction, name: string) => {
