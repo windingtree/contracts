@@ -11,6 +11,7 @@ lib
 temp
 *.level
 coverage
+coverage.json
 typedoc
 artifacts-zk
 cache-zk

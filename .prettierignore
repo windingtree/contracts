@@ -4,6 +4,7 @@ dist
 lib
 build
 coverage
+coverage.json
 typedoc
 temp
 artifacts-zk
