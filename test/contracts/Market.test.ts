@@ -24,8 +24,9 @@ enum DealStatus {
   Created, // Just created
   Claimed, // Claimed by the supplier
   Rejected, // Rejected by the supplier
+  Refunded, // Refunded by the supplier
   Cancelled, // Cancelled by the buyer
-  CheckedId, // Checked In
+  CheckedIn, // Checked In
   CheckedOut, // Checked Out
   Disputed, // Dispute started
 }
@@ -718,9 +719,9 @@ describe('Market contract', () => {
           ]);
           await expect(tx)
             .to.emit(buyer.market, 'Status')
-            .withArgs(offer.payload.id, DealStatus.CheckedId, buyer.address);
+            .withArgs(offer.payload.id, DealStatus.CheckedIn, buyer.address);
           const { status } = await buyer.market.deals(offer.payload.id);
-          expect(status).to.eq(DealStatus.CheckedId);
+          expect(status).to.eq(DealStatus.CheckedIn);
         });
       });
 
@@ -756,9 +757,9 @@ describe('Market contract', () => {
           ]);
           await expect(tx)
             .to.emit(supplierSigner.market, 'Status')
-            .withArgs(offer.payload.id, DealStatus.CheckedId, supplierSigner.address);
+            .withArgs(offer.payload.id, DealStatus.CheckedIn, supplierSigner.address);
           const { status } = await buyer.market.deals(offer.payload.id);
-          expect(status).to.eq(DealStatus.CheckedId);
+          expect(status).to.eq(DealStatus.CheckedIn);
         });
 
         it('should check in after checkIn date', async () => {
@@ -780,9 +781,9 @@ describe('Market contract', () => {
           ]);
           await expect(tx)
             .to.emit(supplierSigner.market, 'Status')
-            .withArgs(offer.payload.id, DealStatus.CheckedId, supplierSigner.address);
+            .withArgs(offer.payload.id, DealStatus.CheckedIn, supplierSigner.address);
           const { status } = await buyer.market.deals(offer.payload.id);
-          expect(status).to.eq(DealStatus.CheckedId);
+          expect(status).to.eq(DealStatus.CheckedIn);
         });
       });
     });

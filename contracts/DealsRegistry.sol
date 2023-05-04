@@ -96,8 +96,9 @@ abstract contract DealsRegistry is
     Created, // Just created
     Claimed, // Claimed by the supplier
     Rejected, // Rejected by the supplier
+    Refunded, // Refunded by the supplier
     Cancelled, // Cancelled by the buyer
-    CheckedId, // Checked In
+    CheckedIn, // Checked In
     CheckedOut, // Checked Out
     Disputed // Dispute started
   }
@@ -188,8 +189,10 @@ abstract contract DealsRegistry is
 
     allowedStatuses["reject"] = [DealStatus.Created];
     allowedStatuses["cancel"] = [DealStatus.Created, DealStatus.Claimed];
+    allowedStatuses["refund"] = [DealStatus.Claimed, DealStatus.CheckedIn];
     allowedStatuses["claim"] = [DealStatus.Created];
     allowedStatuses["checkIn"] = [DealStatus.Claimed];
+    allowedStatuses["checkOut"] = [DealStatus.CheckedIn];
   }
 
   /// Modifiers
@@ -784,12 +787,20 @@ abstract contract DealsRegistry is
     // Execute before checkIn hook
     _beforeCheckIn(offerId, signs);
 
-    storedDeal.status = DealStatus.CheckedId;
-    emit Status(offerId, DealStatus.CheckedId, sender);
+    storedDeal.status = DealStatus.CheckedIn;
+    emit Status(offerId, DealStatus.CheckedIn, sender);
 
     // Execute after checkIn hook
     _afterCheckIn(offerId, signs);
   }
+
+  function checkOut(
+    bytes32 offerId
+  )
+    external
+    dealExists(offerId)
+    inStatuses(offerId, allowedStatuses["checkIn"])
+  {}
 
   uint256[50] private __gap;
 }
