@@ -47,6 +47,7 @@ export interface OfferPayload {
   cancelHash: string;
   transferable: boolean;
   checkIn: BigNumber;
+  checkOut: BigNumber;
 }
 
 export interface Offer {
@@ -254,6 +255,7 @@ export const buildRandomOffer = async (
     cancelHash: hashCancelOptionArray(cancel),
     transferable: transferableOverride ?? Math.random() > 0.5,
     checkIn: checkInTime,
+    checkOut: checkInTime.add(BigNumber.from(7200)),
   };
 
   const signature = await signer._signTypedData(

@@ -126,12 +126,14 @@ contract Market is Ownable, Pausable, DealsRegistry, ERC721Token {
   }
 
   /**
-   * @dev Executes logic before a deal is canceled
+   * @dev Executes logic after a deal is canceled
    * @param offerId The ID of the offer
    */
-  function _beforeCancel(bytes32 offerId) internal override(DealsRegistry) {
-    if (deals[offerId].status != DealStatus.Created) {
-      uint256 tokenId = offerTokens[offerId];
+  function _afterCancel(bytes32 offerId) internal override(DealsRegistry) {
+    uint256 tokenId = offerTokens[offerId];
+
+    // If token has been minted we must burn it
+    if (tokenId != 0) {
       safeBurn(tokenId);
       delete tokenOffers[tokenId];
       delete offerTokens[offerId];
