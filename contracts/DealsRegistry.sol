@@ -75,6 +75,7 @@ abstract contract DealsRegistry is
    * @param cancelHash The hash of the cancellation option used for the deal
    * @param transferable Indicates whether the deal NFT is transferable or not
    * @param checkIn The check-in time for the deal (in seconds since the Unix epoch)
+   * @param checkOut The check-out time for the deal (in seconds since the Unix epoch)
    */
   struct Offer {
     bytes32 id;
@@ -87,6 +88,7 @@ abstract contract DealsRegistry is
     bytes32 cancelHash;
     bool transferable;
     uint256 checkIn;
+    uint256 checkOut;
   }
 
   /**
@@ -169,6 +171,9 @@ abstract contract DealsRegistry is
   /// @dev Thrown when a user attempts to claim the deal in non-created status
   error NotAllowedStatus();
 
+  /// @dev Thrown when a user attempts to do something that not allowed at a moment
+  error NotAllowedTime();
+
   /// @dev Thrown when a user attempts to cancel the deal using invalid cancellation options
   error InvalidCancelOptions();
 
@@ -193,6 +198,7 @@ abstract contract DealsRegistry is
     allowedStatuses["claim"] = [DealStatus.Created];
     allowedStatuses["checkIn"] = [DealStatus.Claimed];
     allowedStatuses["checkOut"] = [DealStatus.CheckedIn];
+    allowedStatuses["dispute"] = [DealStatus.CheckedIn, DealStatus.CheckedOut];
   }
 
   /// Modifiers
@@ -386,6 +392,34 @@ abstract contract DealsRegistry is
   function _afterReject(bytes32 offerId, bytes32 reason) internal virtual {}
 
   /**
+   * @dev Hook function that runs before the deal is canceled.
+   * Allows inheriting smart contracts to perform custom logic.
+   * @param offerId The offerId of the deal
+   */
+  function _beforeCancel(bytes32 offerId) internal virtual whenNotPaused {}
+
+  /**
+   * @dev Hook function that runs after the deal is canceled.
+   * Allows inheriting smart contracts to perform custom logic.
+   * @param offerId The offerId of the deal
+   */
+  function _afterCancel(bytes32 offerId) internal virtual {}
+
+  /**
+   * @dev Hook function that runs before the deal is refunded.
+   * Allows inheriting smart contracts to perform custom logic.
+   * @param offerId The offerId of the deal
+   */
+  function _beforeRefund(bytes32 offerId) internal virtual whenNotPaused {}
+
+  /**
+   * @dev Hook function that runs after the deal is refunded.
+   * Allows inheriting smart contracts to perform custom logic.
+   * @param offerId The offerId of the deal
+   */
+  function _afterRefund(bytes32 offerId) internal virtual {}
+
+  /**
    * @dev Hook function that runs before the deal is claimed.
    * Allows inheriting smart contracts to perform custom logic.
    * @param offerId The offerId of the deal
@@ -427,18 +461,18 @@ abstract contract DealsRegistry is
   ) internal virtual {}
 
   /**
-   * @dev Hook function that runs before the deal is canceled.
+   * @dev Hook function that runs before the deal is checked out.
    * Allows inheriting smart contracts to perform custom logic.
    * @param offerId The offerId of the deal
    */
-  function _beforeCancel(bytes32 offerId) internal virtual whenNotPaused {}
+  function _beforeCheckOut(bytes32 offerId) internal virtual whenNotPaused {}
 
   /**
-   * @dev Hook function that runs after the deal is canceled.
+   * @dev Hook function that runs after the deal is checked out.
    * Allows inheriting smart contracts to perform custom logic.
    * @param offerId The offerId of the deal
    */
-  function _afterCancel(bytes32 offerId) internal virtual {}
+  function _afterCheckOut(bytes32 offerId) internal virtual {}
 
   /// Features
 
@@ -470,6 +504,7 @@ abstract contract DealsRegistry is
     address buyer = _msgSender();
 
     /// @dev variable scoping used to avoid stack too deep errors
+    /// The `supplier` storage variable is required is the frame of this scope only
     {
       bytes32 offerHash = _hashTypedDataV4(hash(offer));
       Supplier storage supplier = suppliers[offer.supplierId];
@@ -563,14 +598,15 @@ abstract contract DealsRegistry is
   )
     external
     dealExists(offerId)
-    inStatuses(offerId, allowedStatuses["reject"])
     onlySigner(offerId)
+    inStatuses(offerId, allowedStatuses["reject"])
   {
     Deal storage storedDeal = deals[offerId];
 
-    _beforeReject(offerId, reason);
-
+    // Moving to the Rejected status before all to avoid reentrancy
     storedDeal.status = DealStatus.Rejected;
+
+    _beforeReject(offerId, reason);
 
     if (
       !IERC20(storedDeal.asset).transfer(storedDeal.buyer, storedDeal.price)
@@ -581,6 +617,42 @@ abstract contract DealsRegistry is
     emit Status(offerId, DealStatus.Rejected, _msgSender());
 
     _afterReject(offerId, reason);
+  }
+
+  /**
+   * @dev Refunds the deal
+   * @param offerId The deal offer Id
+   *
+   * Requirements:
+   *
+   * - the deal must exists
+   * - the deal must be in status DealStatus.CheckedIn
+   * - must be called by the signer address of the deal offer supplier
+   */
+  function refund(
+    bytes32 offerId
+  )
+    external
+    dealExists(offerId)
+    onlySigner(offerId)
+    inStatuses(offerId, allowedStatuses["refund"])
+  {
+    Deal storage storedDeal = deals[offerId];
+
+    // Moving to the Refunded status before all to avoid reentrancy
+    storedDeal.status = DealStatus.Refunded;
+
+    _beforeRefund(offerId);
+
+    if (
+      !IERC20(storedDeal.asset).transfer(storedDeal.buyer, storedDeal.price)
+    ) {
+      revert DealFundsTransferFailed();
+    }
+
+    emit Status(offerId, DealStatus.Refunded, _msgSender());
+
+    _afterRefund(offerId);
   }
 
   /**
@@ -612,9 +684,14 @@ abstract contract DealsRegistry is
       revert NotAllowedAuth();
     }
 
-    _beforeCancel((offerId));
+    DealStatus callStatus = storedDeal.status;
 
-    if (storedDeal.status == DealStatus.Created) {
+    // Moving to the Cancelled status before all to avoid reentrancy
+    storedDeal.status = DealStatus.Cancelled;
+
+    _beforeCancel(offerId);
+
+    if (callStatus == DealStatus.Created) {
       // Full refund
       if (
         !IERC20(storedDeal.asset).transfer(storedDeal.buyer, storedDeal.price)
@@ -622,12 +699,13 @@ abstract contract DealsRegistry is
         revert DealFundsTransferFailed();
       }
     } else if (
-      storedDeal.status == DealStatus.Claimed &&
+      callStatus == DealStatus.Claimed &&
       block.timestamp < storedDeal.offer.checkIn
     ) {
       if (storedDeal.offer.cancelHash != hash(_cancelOptions)) {
         revert InvalidCancelOptions();
       }
+
       // Using offer cancellation rules
       uint256 selectedTime;
       uint256 selectedPenalty;
@@ -675,7 +753,6 @@ abstract contract DealsRegistry is
       revert NotAllowedStatus();
     }
 
-    storedDeal.status = DealStatus.Cancelled;
     emit Status(offerId, DealStatus.Cancelled, sender);
 
     _afterCancel(offerId);
@@ -696,8 +773,8 @@ abstract contract DealsRegistry is
   )
     external
     dealExists(offerId)
-    inStatuses(offerId, allowedStatuses["claim"])
     onlySigner(offerId)
+    inStatuses(offerId, allowedStatuses["claim"])
   {
     Deal storage storedDeal = deals[offerId];
 
@@ -794,13 +871,51 @@ abstract contract DealsRegistry is
     _afterCheckIn(offerId, signs);
   }
 
+  /**
+   * @dev Checks out the deal and sends funds to the supplier
+   * @param offerId The deal offer Id
+   *
+   * Requirements:
+   *
+   * - the deal must exists
+   * - must be called by the supplier's signer only
+   * - the deal must be in status DealStatus.CheckIn
+   * - must be called after checkOut time only
+   */
   function checkOut(
     bytes32 offerId
   )
     external
     dealExists(offerId)
-    inStatuses(offerId, allowedStatuses["checkIn"])
-  {}
+    onlySigner(offerId)
+    inStatuses(offerId, allowedStatuses["checkOut"])
+  {
+    Deal storage storedDeal = deals[offerId];
+
+    if (block.timestamp < storedDeal.offer.checkOut) {
+      revert NotAllowedTime();
+    }
+
+    // Moving to CheckedOut status before all to avoid reentrancy
+    storedDeal.status = DealStatus.CheckedOut;
+
+    // Execute before checkOut hook
+    _beforeCheckOut(offerId);
+
+    if (
+      !IERC20(storedDeal.asset).transfer(
+        suppliers[storedDeal.offer.supplierId].owner,
+        storedDeal.price
+      )
+    ) {
+      revert DealFundsTransferFailed();
+    }
+
+    emit Status(offerId, DealStatus.CheckedOut, _msgSender());
+
+    // Execute after checkOut hook
+    _afterCheckOut(offerId);
+  }
 
   uint256[50] private __gap;
 }
