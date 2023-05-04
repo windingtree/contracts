@@ -605,6 +605,129 @@ describe('Market contract', () => {
       });
     });
 
+    describe('#cancel(bytes32,CancelOption[])', () => {
+      let offer: Offer;
+
+      beforeEach(async () => {
+        const blockTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
+        offer = await buildRandomOffer(
+          supplierId,
+          supplierSigner.signer,
+          'Market',
+          '1',
+          BigNumber.from((await supplierSigner.market.provider.getNetwork()).chainId),
+          supplierSigner.market.address,
+          supplierSigner.erc20.address,
+          true,
+          BigNumber.from(blockTimestamp),
+        );
+        await buyer.erc20.approve(buyer.market.address, offer.payment[0].price);
+        await buyer.market.deal(offer.payload, offer.payment, offer.payment[0].id, [
+          offer.signature,
+        ]);
+      });
+
+      it('should throw if a deal is not found', async () => {
+        await expect(
+          buyer.market.cancel(constants.HashZero, []),
+        ).to.revertedWithCustomError(buyer.market, 'DealNotFound');
+      });
+
+      it('should throw if a deal is checked-in', async () => {
+        await supplierSigner.market.claim(offer.payload.id);
+        const signSupplier = await createCheckInOutSignature(
+          supplierSigner.signer,
+          offer.payload.id,
+          'Market',
+          '1',
+          BigNumber.from(await supplierSigner.signer.getChainId()),
+          supplierSigner.market.address,
+        );
+        const signBuyer = await createCheckInOutSignature(
+          buyer.signer,
+          offer.payload.id,
+          'Market',
+          '1',
+          BigNumber.from(await buyer.signer.getChainId()),
+          buyer.market.address,
+        );
+        await supplierSigner.market.checkIn(offer.payload.id, [signSupplier, signBuyer]);
+        await expect(
+          buyer.market.cancel(offer.payload.id, []),
+        ).to.revertedWithCustomError(buyer.market, 'NotAllowedStatus');
+      });
+
+      it('should throw if called not by buyer', async () => {
+        await expect(
+          supplierSigner.market.cancel(offer.payload.id, []),
+        ).to.revertedWithCustomError(buyer.market, 'NotAllowedAuth');
+      });
+
+      it('should cancel non-claimed deal by buyer', async () => {
+        const balanceBefore = await buyer.erc20.balanceOf(buyer.address);
+        const tx = await buyer.market.cancel(offer.payload.id, []);
+        await expect(tx)
+          .to.emit(supplierSigner.market, 'Status')
+          .withArgs(offer.payload.id, DealStatus.Cancelled, buyer.address);
+        const { status } = await buyer.market.deals(offer.payload.id);
+        expect(status).to.eq(DealStatus.Cancelled);
+        expect(await buyer.erc20.balanceOf(buyer.address)).to.eq(
+          balanceBefore.add(offer.payment[0].price),
+        );
+      });
+
+      it('should throw if a deal is cancelled already', async () => {
+        await buyer.market.cancel(offer.payload.id, []);
+        await expect(
+          buyer.market.cancel(offer.payload.id, []),
+        ).to.revertedWithCustomError(buyer.market, 'NotAllowedStatus');
+      });
+
+      it('should throw if an invalid cancellation options provided', async () => {
+        await supplierSigner.market.claim(offer.payload.id);
+        await expect(
+          buyer.market.cancel(offer.payload.id, []),
+        ).to.revertedWithCustomError(buyer.market, 'InvalidCancelOptions');
+      });
+
+      it('should cancel claimed deal according to the cancellation options', async () => {
+        await supplierSigner.market.claim(offer.payload.id);
+        let blockTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
+        await ethers.provider.send('evm_setNextBlockTimestamp', [blockTimestamp + 3000]);
+        await ethers.provider.send('evm_mine', []);
+        blockTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
+        const penalty = getCancelPenalty(offer.cancel, BigNumber.from(blockTimestamp));
+        const multiplier = BigNumber.from(1000);
+        const penaltyValue = offer.payment[0].price
+          .mul(multiplier)
+          .mul(penalty)
+          .div(BigNumber.from(100))
+          .div(multiplier);
+        const balanceBefore = await buyer.erc20.balanceOf(buyer.address);
+        const balanceSupplierBefore = await supplierOwner.erc20.balanceOf(
+          supplierOwner.address,
+        );
+        const tokenId = await buyer.market.offerTokens(offer.payload.id);
+        const tx = await buyer.market.cancel(offer.payload.id, offer.cancel);
+        await expect(tx)
+          .to.emit(supplierSigner.market, 'Status')
+          .withArgs(offer.payload.id, DealStatus.Cancelled, buyer.address);
+        const { status } = await buyer.market.deals(offer.payload.id);
+        expect(status).to.eq(DealStatus.Cancelled);
+        expect(await buyer.erc20.balanceOf(buyer.address)).to.eq(
+          balanceBefore.add(offer.payment[0].price.sub(penaltyValue)),
+        );
+        expect(await supplierOwner.erc20.balanceOf(supplierOwner.address)).to.eq(
+          balanceSupplierBefore.add(penaltyValue),
+        );
+        await expect(tx)
+          .to.emit(supplierSigner.market, 'Transfer')
+          .withArgs(buyer.address, constants.AddressZero, tokenId);
+        expect(await buyer.market.offerTokens(offer.payload.id)).to.eq(0);
+        expect(await buyer.market.tokenOffers(tokenId)).to.eq(constants.HashZero);
+      });
+    });
+
     describe('#checkIn(bytes32,bytes[])', () => {
       let offer: Offer;
 
@@ -788,7 +911,98 @@ describe('Market contract', () => {
       });
     });
 
-    describe('#cancel(bytes32,CancelOption[])', () => {
+    describe('#checkOut(bytes32)', () => {
+      let offer: Offer;
+
+      beforeEach(async () => {
+        const blockTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
+        offer = await buildRandomOffer(
+          supplierId,
+          supplierSigner.signer,
+          'Market',
+          '1',
+          BigNumber.from((await supplierSigner.market.provider.getNetwork()).chainId),
+          supplierSigner.market.address,
+          supplierSigner.erc20.address,
+          true,
+          BigNumber.from(blockTimestamp),
+        );
+        await buyer.erc20.approve(buyer.market.address, offer.payment[0].price);
+        await buyer.market.deal(offer.payload, offer.payment, offer.payment[0].id, [
+          offer.signature,
+        ]);
+        await supplierSigner.market.claim(offer.payload.id);
+      });
+
+      it('should throw if deal not exists', async () => {
+        await expect(
+          supplierSigner.market.checkOut(constants.HashZero),
+        ).to.revertedWithCustomError(supplierSigner.market, 'DealNotFound');
+      });
+
+      describe('if not checked in', () => {
+        it('should throw if a deal is not checked in', async () => {
+          await expect(
+            supplierSigner.market.checkOut(offer.payload.id),
+          ).to.revertedWithCustomError(supplierSigner.market, 'NotAllowedStatus');
+        });
+      });
+
+      describe('if checked in', () => {
+        beforeEach(async () => {
+          const signBuyer = await createCheckInOutSignature(
+            buyer.signer,
+            offer.payload.id,
+            'Market',
+            '1',
+            BigNumber.from(await buyer.signer.getChainId()),
+            buyer.market.address,
+          );
+          const signSupplier = await createCheckInOutSignature(
+            supplierSigner.signer,
+            offer.payload.id,
+            'Market',
+            '1',
+            BigNumber.from(await supplierSigner.signer.getChainId()),
+            supplierSigner.market.address,
+          );
+          await buyer.market.checkIn(offer.payload.id, [signBuyer, signSupplier]);
+        });
+
+        it('should throw if called not by a signer', async () => {
+          await expect(
+            buyer.market.checkOut(offer.payload.id),
+          ).to.revertedWithCustomError(supplierSigner.market, 'NotAllowedAuth');
+        });
+
+        it('should throw if called before check out time', async () => {
+          await expect(
+            supplierSigner.market.checkOut(offer.payload.id),
+          ).to.revertedWithCustomError(supplierSigner.market, 'NotAllowedTime');
+        });
+
+        it('should check out a deal', async () => {
+          await ethers.provider.send('evm_setNextBlockTimestamp', [
+            offer.payload.checkOut.toNumber(),
+          ]);
+          await ethers.provider.send('evm_mine', []);
+          const balanceBefore = await supplierOwner.erc20.balanceOf(
+            supplierOwner.address,
+          );
+          const tx = await supplierSigner.market.checkOut(offer.payload.id);
+          await expect(tx)
+            .to.emit(supplierSigner.market, 'Status')
+            .withArgs(offer.payload.id, DealStatus.CheckedOut, supplierSigner.address);
+          const { status } = await buyer.market.deals(offer.payload.id);
+          expect(status).to.eq(DealStatus.CheckedOut);
+          expect(await supplierOwner.erc20.balanceOf(supplierOwner.address)).to.eq(
+            balanceBefore.add(offer.payment[0].price),
+          );
+        });
+      });
+    });
+
+    describe('#refund(bytes32)', () => {
       let offer: Offer;
 
       beforeEach(async () => {
@@ -810,104 +1024,102 @@ describe('Market contract', () => {
         ]);
       });
 
-      it('should throw if a deal is not found', async () => {
+      it('should throw if deal not exists', async () => {
         await expect(
-          buyer.market.cancel(constants.HashZero, []),
-        ).to.revertedWithCustomError(buyer.market, 'DealNotFound');
+          supplierSigner.market.refund(constants.HashZero),
+        ).to.revertedWithCustomError(supplierSigner.market, 'DealNotFound');
       });
 
-      it('should throw if a deal is checked-in', async () => {
-        await supplierSigner.market.claim(offer.payload.id);
-        const signSupplier = await createCheckInOutSignature(
-          supplierSigner.signer,
-          offer.payload.id,
-          'Market',
-          '1',
-          BigNumber.from(await supplierSigner.signer.getChainId()),
-          supplierSigner.market.address,
-        );
-        const signBuyer = await createCheckInOutSignature(
-          buyer.signer,
-          offer.payload.id,
-          'Market',
-          '1',
-          BigNumber.from(await buyer.signer.getChainId()),
-          buyer.market.address,
-        );
-        await supplierSigner.market.checkIn(offer.payload.id, [signSupplier, signBuyer]);
-        await expect(
-          buyer.market.cancel(offer.payload.id, []),
-        ).to.revertedWithCustomError(buyer.market, 'NotAllowedStatus');
+      describe('if not claimed', () => {
+        it('should throw if a deal is not claimed', async () => {
+          await expect(
+            supplierSigner.market.refund(offer.payload.id),
+          ).to.revertedWithCustomError(supplierSigner.market, 'NotAllowedStatus');
+        });
       });
 
-      it('should throw if called not by buyer', async () => {
-        await expect(
-          supplierSigner.market.cancel(offer.payload.id, []),
-        ).to.revertedWithCustomError(buyer.market, 'NotAllowedAuth');
-      });
+      describe('if claimed', () => {
+        beforeEach(async () => {
+          await supplierSigner.market.claim(offer.payload.id);
+        });
 
-      it('should cancel non-claimed deal by buyer', async () => {
-        const balanceBefore = await buyer.erc20.balanceOf(buyer.address);
-        const tx = await buyer.market.cancel(offer.payload.id, []);
-        await expect(tx)
-          .to.emit(supplierSigner.market, 'Status')
-          .withArgs(offer.payload.id, DealStatus.Cancelled, buyer.address);
-        const { status } = await buyer.market.deals(offer.payload.id);
-        expect(status).to.eq(DealStatus.Cancelled);
-        expect(await buyer.erc20.balanceOf(buyer.address)).to.eq(
-          balanceBefore.add(offer.payment[0].price),
-        );
-      });
+        it('should throw if called not by a signer', async () => {
+          await expect(buyer.market.refund(offer.payload.id)).to.revertedWithCustomError(
+            supplierSigner.market,
+            'NotAllowedAuth',
+          );
+        });
 
-      it('should throw if a deal is cancelled', async () => {
-        await buyer.market.cancel(offer.payload.id, []);
-        await expect(
-          buyer.market.cancel(offer.payload.id, []),
-        ).to.revertedWithCustomError(buyer.market, 'NotAllowedStatus');
-      });
+        it('should throw if a deal is checked out', async () => {
+          const signBuyer = await createCheckInOutSignature(
+            buyer.signer,
+            offer.payload.id,
+            'Market',
+            '1',
+            BigNumber.from(await buyer.signer.getChainId()),
+            buyer.market.address,
+          );
+          const signSupplier = await createCheckInOutSignature(
+            supplierSigner.signer,
+            offer.payload.id,
+            'Market',
+            '1',
+            BigNumber.from(await supplierSigner.signer.getChainId()),
+            supplierSigner.market.address,
+          );
+          await buyer.market.checkIn(offer.payload.id, [signBuyer, signSupplier]);
+          await ethers.provider.send('evm_setNextBlockTimestamp', [
+            offer.payload.checkOut.toNumber(),
+          ]);
+          await ethers.provider.send('evm_mine', []);
+          await supplierSigner.market.checkOut(offer.payload.id);
+          await expect(
+            supplierSigner.market.refund(offer.payload.id),
+          ).to.revertedWithCustomError(supplierSigner.market, 'NotAllowedStatus');
+        });
 
-      it('should throw if an invalid cancellation options provided', async () => {
-        await supplierSigner.market.claim(offer.payload.id);
-        await expect(
-          buyer.market.cancel(offer.payload.id, []),
-        ).to.revertedWithCustomError(buyer.market, 'InvalidCancelOptions');
-      });
+        it('should refund a deal in Claimed status', async () => {
+          const balanceBefore = await buyer.erc20.balanceOf(buyer.address);
+          const tx = await supplierSigner.market.refund(offer.payload.id);
+          await expect(tx)
+            .to.emit(supplierSigner.market, 'Status')
+            .withArgs(offer.payload.id, DealStatus.Refunded, supplierSigner.address);
+          const { status } = await buyer.market.deals(offer.payload.id);
+          expect(status).to.eq(DealStatus.Refunded);
+          expect(await buyer.erc20.balanceOf(buyer.address)).to.eq(
+            balanceBefore.add(offer.payment[0].price),
+          );
+        });
 
-      it('should cancel claimed deal according to the cancellation options', async () => {
-        await supplierSigner.market.claim(offer.payload.id);
-        let blockTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
-        await ethers.provider.send('evm_setNextBlockTimestamp', [blockTimestamp + 3000]);
-        await ethers.provider.send('evm_mine', []);
-        blockTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
-        const penalty = getCancelPenalty(offer.cancel, BigNumber.from(blockTimestamp));
-        const multiplier = BigNumber.from(1000);
-        const penaltyValue = offer.payment[0].price
-          .mul(multiplier)
-          .mul(penalty)
-          .div(BigNumber.from(100))
-          .div(multiplier);
-        const balanceBefore = await buyer.erc20.balanceOf(buyer.address);
-        const balanceSupplierBefore = await supplierOwner.erc20.balanceOf(
-          supplierOwner.address,
-        );
-        const tokenId = await buyer.market.offerTokens(offer.payload.id);
-        const tx = await buyer.market.cancel(offer.payload.id, offer.cancel);
-        await expect(tx)
-          .to.emit(supplierSigner.market, 'Status')
-          .withArgs(offer.payload.id, DealStatus.Cancelled, buyer.address);
-        const { status } = await buyer.market.deals(offer.payload.id);
-        expect(status).to.eq(DealStatus.Cancelled);
-        expect(await buyer.erc20.balanceOf(buyer.address)).to.eq(
-          balanceBefore.add(offer.payment[0].price.sub(penaltyValue)),
-        );
-        expect(await supplierOwner.erc20.balanceOf(supplierOwner.address)).to.eq(
-          balanceSupplierBefore.add(penaltyValue),
-        );
-        await expect(tx)
-          .to.emit(supplierSigner.market, 'Transfer')
-          .withArgs(buyer.address, constants.AddressZero, tokenId);
-        expect(await buyer.market.offerTokens(offer.payload.id)).to.eq(0);
-        expect(await buyer.market.tokenOffers(tokenId)).to.eq(constants.HashZero);
+        it('should refund a deal in CheckedIn status', async () => {
+          const signBuyer = await createCheckInOutSignature(
+            buyer.signer,
+            offer.payload.id,
+            'Market',
+            '1',
+            BigNumber.from(await buyer.signer.getChainId()),
+            buyer.market.address,
+          );
+          const signSupplier = await createCheckInOutSignature(
+            supplierSigner.signer,
+            offer.payload.id,
+            'Market',
+            '1',
+            BigNumber.from(await supplierSigner.signer.getChainId()),
+            supplierSigner.market.address,
+          );
+          await buyer.market.checkIn(offer.payload.id, [signBuyer, signSupplier]);
+          const balanceBefore = await buyer.erc20.balanceOf(buyer.address);
+          const tx = await supplierSigner.market.refund(offer.payload.id);
+          await expect(tx)
+            .to.emit(supplierSigner.market, 'Status')
+            .withArgs(offer.payload.id, DealStatus.Refunded, supplierSigner.address);
+          const { status } = await buyer.market.deals(offer.payload.id);
+          expect(status).to.eq(DealStatus.Refunded);
+          expect(await buyer.erc20.balanceOf(buyer.address)).to.eq(
+            balanceBefore.add(offer.payment[0].price),
+          );
+        });
       });
     });
   });
