@@ -95,15 +95,14 @@
     "@openzeppelin/contracts": "^4.8.3"
   },
   "scripts": {
-    "clean": "rm -rf ./lib && hardhat clean",
-    "build": "yarn clean && hardhat compile && tsc -p ./tsconfig.build.json",
+    "build:contracts": "hardhat clean && hardhat compile && tsc -p ./tsconfig.build.json",
+    "build:src": "rm -rf ./lib && tsc -p ./tsconfig.build.json",
     "test:contracts": "hardhat test",
     "test:src": "mocha -t 60000 --extension spec.ts test/src",
     "lint": "solhint . && eslint --ext .ts",
     "lint:fix": "eslint --ext .ts --fix && solhint --fix . && prettier --check !network --write .",
     "coverage": "npx hardhat coverage",
     "prepare": "husky install",
-    "commit": "git-cz -S",
-    "postinstall": "yarn build"
+    "commit": "git-cz -S"
   }
 }
