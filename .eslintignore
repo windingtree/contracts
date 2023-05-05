@@ -1,0 +1,13 @@
+node_modules
+.github
+dist
+lib
+build
+coverage
+typedoc
+temp
+artifacts-zk
+cache-zk
+artifacts
+cache
+./**/*.sol

@@ -1,0 +1,109 @@
+{
+  "name": "@windingtree/contracts",
+  "version": "0.0.0-semantic-release",
+  "description": "The WindingTree market protocol smart contracts and utilities",
+  "repository": "git@github.com:windingtree/contracts.git",
+  "bugs": "https://github.com/windingtree/contracts/issues",
+  "homepage": "https://github.com/windingtree/contracts#readme",
+  "author": "Kostiantyn Smyrnov <kostysh@gmail.com>",
+  "keywords": [
+    "windingtree",
+    "market",
+    "protocol",
+    "solidity",
+    "typescript",
+    "contract",
+    "smart contract"
+  ],
+  "contributors": [
+    "Kostiantyn Smyrnov <kostysh@gmail.com>"
+  ],
+  "license": "MIT",
+  "private": false,
+  "types": "./lib/src/index.d.ts",
+  "main": "./lib/src/index.js",
+  "files": [
+    "lib/src/*",
+    "lib/artifacts/*",
+    "lib/typechain/*",
+    "!**/*.tsbuildinfo",
+    "!**/**.dbg.json"
+  ],
+  "release": {
+    "branches": [
+      {
+        "name": "master"
+      },
+      {
+        "name": "beta",
+        "channel": "beta",
+        "prerelease": true
+      }
+    ],
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/changelog",
+      "@semantic-release/release-notes-generator",
+      "@semantic-release/npm",
+      "@semantic-release/github"
+    ]
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "^18.15.11",
+    "@types/mocha": "^10.0.1",
+    "@types/chai": "^4.3.4",
+    "semantic-release": "^21.0.1",
+    "semantic-release-cli": "^5.4.4",
+    "@semantic-release/changelog": "^6.0.3",
+    "eslint": "^8.38.0",
+    "@typescript-eslint/eslint-plugin": "^5.58.0",
+    "@typescript-eslint/parser": "^5.58.0",
+    "prettier": "^2.8.7",
+    "prettier-plugin-solidity": "^1.1.3",
+    "solhint-plugin-prettier": "^0.0.5",
+    "prettier-plugin-jsdoc": "^0.4.2",
+    "husky": "^8.0.3",
+    "git-cz": "^4.9.0",
+    "@commitlint/config-conventional": "^17.6.1",
+    "@commitlint/cli": "^17.6.1",
+    "lint-staged": "^13.2.1",
+    "mocha": "^10.2.0",
+    "chai": "^4.3.7",
+    "@nomicfoundation/hardhat-chai-matchers": "^1.0.6",
+    "@nomiclabs/hardhat-etherscan": "^3.1.7",
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@nomiclabs/hardhat-solhint": "^3.0.1",
+    "hardhat-deploy": "^0.11.26",
+    "hardhat-deploy-ethers": "^0.4.0-next.1",
+    "hardhat-gas-reporter": "^1.0.9",
+    "solidity-coverage": "^0.8.2",
+    "@openzeppelin/hardhat-upgrades": "^1.23.1",
+    "solhint": "^3.4.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.4",
+    "ethers": "^5.7.2",
+    "hardhat": "^2.14.0",
+    "typechain": "^8.1.1",
+    "@typechain/hardhat": "^6.1.5",
+    "@typechain/ethers-v5": "^10.2.0",
+    "dotenv": "^16.0.3"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.8.3"
+  },
+  "scripts": {
+    "clean": "rm -rf ./lib && hardhat clean",
+    "build": "yarn clean && hardhat compile && tsc -p ./tsconfig.build.json",
+    "test:contracts": "hardhat test",
+    "test:src": "mocha -t 60000 --extension spec.ts test/src",
+    "lint": "solhint . && eslint --ext .ts",
+    "lint:fix": "eslint --ext .ts --fix && solhint --fix . && prettier --check !network --write .",
+    "coverage": "npx hardhat coverage",
+    "prepare": "husky install",
+    "commit": "git-cz -S",
+    "postinstall": "yarn build"
+  }
+}
