@@ -226,7 +226,7 @@ export const buildRandomOffer = async (
   const payment: PaymentOption[] = [
     {
       id: randomId(),
-      price: BigNumber.from('10'),
+      price: BigNumber.from('100'),
       asset: erc20address,
     },
   ];

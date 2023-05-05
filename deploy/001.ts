@@ -1,7 +1,14 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
-import { eip712name, eip712version, minDeposit } from '../test/contracts/setup';
+import {
+  eip712name,
+  eip712version,
+  claimPeriod,
+  protocolFee,
+  retailerFee,
+  minDeposit,
+} from '../test/contracts/setup';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { network, deployments, getNamedAccounts } = hre;
@@ -46,7 +53,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Market
   const market = await deploy('Market', {
     from: owner,
-    args: [owner, eip712name, eip712version, lif.address, minDeposit],
+    args: [
+      owner,
+      eip712name,
+      eip712version,
+      claimPeriod,
+      protocolFee,
+      retailerFee,
+      owner,
+      lif.address,
+      minDeposit,
+    ],
     log: true,
     autoMine: true,
   });

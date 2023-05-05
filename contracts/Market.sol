@@ -23,23 +23,40 @@ contract Market is Ownable, Pausable, DealsRegistry, ERC721Token {
 
   /**
    * @dev Constructor that initializes the Market contract with the given arguments
-   * @param owner The owner of the contract
-   * @param name The name of the contract
-   * @param version The version of the contract
-   * @param asset The address of the asset
-   * @param minDeposit The minimum deposit required for the contract
+   * @param _owner The owner of the contract
+   * @param _name The name of the contract
+   * @param _version The version of the contract
+   * @param _claimPeriod The default time period, in seconds, allowed for the supplier to claim the deal.
+   * @param _protocolFee Protocol's fee in percents
+   * @param _retailerFee Retailer's fee in percents
+   * @param _feeRecipient he recipient of the protocol fee
+   * @param _asset The address of the asset
+   * @param _minDeposit The minimum deposit required for the contract
    */
   constructor(
-    address owner,
-    string memory name,
-    string memory version,
-    address asset,
-    uint256 minDeposit
+    address _owner,
+    string memory _name,
+    string memory _version,
+    uint256 _claimPeriod,
+    uint256 _protocolFee,
+    uint256 _retailerFee,
+    address _feeRecipient,
+    address _asset,
+    uint256 _minDeposit
   )
-    DealsRegistry(name, version, asset, minDeposit)
+    DealsRegistry(
+      _name,
+      _version,
+      _claimPeriod,
+      _protocolFee,
+      _retailerFee,
+      _feeRecipient,
+      _asset,
+      _minDeposit
+    )
     ERC721Token("DealToken", "DEAL")
   {
-    transferOwnership(owner);
+    transferOwnership(_owner);
   }
 
   /// Getters

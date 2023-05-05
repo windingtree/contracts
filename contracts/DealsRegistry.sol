@@ -113,7 +113,9 @@ abstract contract DealsRegistry is
    * @param status Current deal status
    */
   struct Deal {
+    uint256 created;
     Offer offer;
+    bytes32 retailerId;
     address buyer;
     uint256 price;
     address asset;
@@ -137,6 +139,9 @@ abstract contract DealsRegistry is
     DealStatus status,
     address indexed sender
   );
+
+  /// @dev Thrown when a user attempts to provide an invalid config property value
+  error InvalidConfig();
 
   /// @dev Thrown when a user attempts to create a deal using an offer with an invalid signature
   error InvalidOfferSignature();
@@ -162,8 +167,14 @@ abstract contract DealsRegistry is
   /// @dev Thrown when the supplier of the offer is not found
   error InvalidSupplier();
 
+  /// @dev Thrown when the retailer of the offer is not found
+  error InvalidRetailer();
+
   /// @dev Thrown when the supplier of the offer is not enabled
   error DisabledSupplier();
+
+  /// @dev Thrown when the retailer is not enabled
+  error DisabledRetailer();
 
   /// @dev Thrown when a function call is not allowed for current user
   error NotAllowedAuth();
@@ -177,21 +188,50 @@ abstract contract DealsRegistry is
   /// @dev Thrown when a user attempts to cancel the deal using invalid cancellation options
   error InvalidCancelOptions();
 
+  /// @dev Thrown when percents value greater than 100
+  error InvalidPercent();
+
   /**
    * @dev DealsRegistry constructor
-   * @param name EIP712 contract name
-   * @param version EIP712 contract version
+   * @param _name The name of the contract
+   * @param _version The version of the contract
+   * @param _claimPeriod The default time period, in seconds, allowed for the supplier to claim the deal.
+   * @param _protocolFee Protocol's fee in percents
+   * @param _retailerFee Retailer's fee in percents
+   * @param _feeRecipient he recipient of the protocol fee
+   * @param _asset The address of the asset
+   * @param _minDeposit The minimum deposit required for the contract
    */
   constructor(
-    string memory name,
-    string memory version,
-    address asset,
-    uint256 minDeposit
-  ) EIP712(name, version) SuppliersRegistry(asset, minDeposit) {
+    string memory _name,
+    string memory _version,
+    uint256 _claimPeriod,
+    uint256 _protocolFee,
+    uint256 _retailerFee,
+    address _feeRecipient,
+    address _asset,
+    uint256 _minDeposit
+  ) EIP712(_name, _version) SuppliersRegistry(_asset, _minDeposit) {
     // The default time period, in seconds, allowed for the supplier to claim the deal.
     // The buyer is not able to cancel the deal during this period
-    config("claim_period", 60);
+    config("claim_period", _claimPeriod);
 
+    // The recipient of the protocol fee
+    config("fee_recipient", _feeRecipient);
+
+    // In total, all the fees must not be greater than 100.
+    // Of course, having 100% of the fees is absurd case.
+    if (_protocolFee.add(_retailerFee) > 100) {
+      revert InvalidConfig();
+    }
+
+    // Protocol's fee in percents
+    config("protocol_fee", _protocolFee);
+
+    // Retailer's fee in percents
+    config("retailer_fee", _retailerFee);
+
+    // Allowed statuses for functions execution
     allowedStatuses["reject"] = [DealStatus.Created];
     allowedStatuses["cancel"] = [DealStatus.Created, DealStatus.Claimed];
     allowedStatuses["refund"] = [DealStatus.Claimed, DealStatus.CheckedIn];
@@ -340,6 +380,17 @@ abstract contract DealsRegistry is
     return keccak256(abi.encode(CHECK_IN_TYPE_HASH, _id, _signer));
   }
 
+  /// @dev Calculates percentage value
+  function _percentage(
+    uint256 value,
+    uint256 percent
+  ) internal pure returns (uint256) {
+    if (percent > 100) {
+      revert InvalidPercent();
+    }
+    return value.mul(1000).mul(percent).div(100).div(1000);
+  }
+
   /// Workflow hooks
 
   /**
@@ -481,6 +532,7 @@ abstract contract DealsRegistry is
    * @param offer An offer payload
    * @param paymentOptions Raw offered payment options array
    * @param paymentId Payment option Id
+   * @param retailerId Retailer Id
    * @param signs Signatures: [0] - offer: ECDSA/ERC1271; [1] - asset permit: ECDSA (optional)
    *
    * Requirements:
@@ -499,6 +551,7 @@ abstract contract DealsRegistry is
     Offer memory offer,
     PaymentOption[] memory paymentOptions,
     bytes32 paymentId,
+    bytes32 retailerId,
     bytes[] memory signs
   ) external {
     address buyer = _msgSender();
@@ -521,8 +574,23 @@ abstract contract DealsRegistry is
 
       // Not-enabled suppliers are not allowed to accept deals
       // So, we cannot allow to create such a deal
-      if (!supplier.enabled) {
+      if (!supplier.enabled || deposits[offer.supplierId] == 0) {
         revert DisabledSupplier();
+      }
+
+      // The retailer is optional, so we validate its rules only if retailerId is defined
+      if (retailerId != bytes32(0)) {
+        Supplier storage retailer = suppliers[retailerId];
+
+        // Retailer must be registered
+        if (retailer.owner == address(0)) {
+          revert InvalidRetailer();
+        }
+
+        // Not-enabled retailer are not allowed
+        if (!retailer.enabled || deposits[retailerId] == 0) {
+          revert DisabledRetailer();
+        }
       }
 
       // Deal can be created only once
@@ -563,7 +631,15 @@ abstract contract DealsRegistry is
     }
 
     // Creating the deal before any external call to avoid reentrancy
-    deals[offer.id] = Deal(offer, buyer, price, asset, DealStatus.Created);
+    deals[offer.id] = Deal(
+      block.timestamp,
+      offer,
+      retailerId,
+      buyer,
+      price,
+      asset,
+      DealStatus.Created
+    );
 
     if (signs.length > 1) {
       // Use permit function to transfer tokens from the sender to the contract
@@ -684,6 +760,12 @@ abstract contract DealsRegistry is
       revert NotAllowedAuth();
     }
 
+    // Buyer is not able to cancel the deal during `claim_period`
+    // This time is given to the supplier to claim the deal
+    if (block.timestamp < storedDeal.created.add(numbers["claim_period"])) {
+      revert NotAllowedTime();
+    }
+
     DealStatus callStatus = storedDeal.status;
 
     // Moving to the Cancelled status before all to avoid reentrancy
@@ -724,12 +806,7 @@ abstract contract DealsRegistry is
         selectedPenalty = 100;
       }
 
-      uint256 penaltyValue = storedDeal
-        .price
-        .mul(1000)
-        .mul(selectedPenalty)
-        .div(100)
-        .div(1000);
+      uint256 penaltyValue = _percentage(storedDeal.price, selectedPenalty);
 
       if (
         !IERC20(storedDeal.asset).transfer(
@@ -902,10 +979,45 @@ abstract contract DealsRegistry is
     // Execute before checkOut hook
     _beforeCheckOut(offerId);
 
+    uint256 protocolFee;
+    uint256 retailerFee;
+    uint256 supplierValue;
+
+    protocolFee = _percentage(storedDeal.price, numbers["protocol_fee"]);
+
+    if (storedDeal.retailerId != bytes32(0)) {
+      retailerFee = _percentage(storedDeal.price, numbers["retailer_fee"]);
+    }
+
+    supplierValue = storedDeal.price.sub(protocolFee).sub(retailerFee);
+
     if (
+      protocolFee > 0 &&
+      // Sends fee to the protocol recipient
+      !IERC20(storedDeal.asset).transfer(
+        addresses["fee_recipient"],
+        protocolFee
+      )
+    ) {
+      revert DealFundsTransferFailed();
+    }
+
+    if (
+      retailerFee > 0 &&
+      // Send fee to the deal retailer
+      !IERC20(storedDeal.asset).transfer(
+        suppliers[storedDeal.retailerId].owner,
+        retailerFee
+      )
+    ) {
+      revert DealFundsTransferFailed();
+    }
+
+    if (
+      // Sends value to the supplier
       !IERC20(storedDeal.asset).transfer(
         suppliers[storedDeal.offer.supplierId].owner,
-        storedDeal.price
+        supplierValue
       )
     ) {
       revert DealFundsTransferFailed();

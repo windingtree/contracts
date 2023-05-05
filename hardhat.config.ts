@@ -33,6 +33,8 @@ const config: HardhatUserConfig = {
     buyer: 2,
     supplierOwner: 3,
     supplierSigner: 4,
+    retailerOwner: 5,
+    retailerSigner: 6,
   },
   networks: addForkConfiguration({
     hardhat: {
