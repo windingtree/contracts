@@ -95,7 +95,7 @@
     "@openzeppelin/contracts": "^4.8.3"
   },
   "scripts": {
-    "build:contracts": "hardhat clean && hardhat compile && tsc -p ./tsconfig.build.json",
+    "build:contracts": "hardhat compile",
     "build:src": "rm -rf ./lib && tsc -p ./tsconfig.build.json",
     "test:contracts": "hardhat test",
     "test:src": "mocha -t 60000 --extension spec.ts test/src",
