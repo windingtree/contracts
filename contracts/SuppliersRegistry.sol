@@ -85,6 +85,7 @@ abstract contract SuppliersRegistry is Context, Configurable, Pausable {
   constructor(address _asset, uint256 _minDeposit) {
     // Supplier's deposit asset
     config("asset", _asset);
+
     // Minimum deposit value
     config("min_deposit", _minDeposit);
   }
@@ -104,7 +105,7 @@ abstract contract SuppliersRegistry is Context, Configurable, Pausable {
    * @param id The supplier Id
    */
   function isSupplierEnabled(bytes32 id) external view returns (bool) {
-    return suppliers[id].enabled;
+    return suppliers[id].enabled && deposits[id] > 0;
   }
 
   /// Features
