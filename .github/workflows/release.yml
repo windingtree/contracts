@@ -22,7 +22,7 @@ jobs:
       - name: Lint
         run: yarn lint
       - name: Test
-        run: yarn test
+        run: yarn test:src && yarn test:contracts
       - name: Build project
         run: yarn build:contracts & yarn build:src
       - name: Release
