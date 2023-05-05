@@ -24,7 +24,9 @@ jobs:
       - name: Test
         run: yarn test:src && yarn test:contracts
       - name: Build project
-        run: yarn build:contracts & yarn build:src
+        run: |
+          yarn build:contracts
+          yarn build:src
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
