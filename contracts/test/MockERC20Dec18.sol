@@ -1,23 +1,33 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /// @custom:security-contact security@windingtree.com
-contract MockERC20Dec18 is ERC20, Ownable, ERC20Burnable, Pausable {
-  bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-  bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+contract MockERC20Dec18 is
+  ERC20Upgradeable,
+  ERC20BurnableUpgradeable,
+  PausableUpgradeable,
+  OwnableUpgradeable
+{
+  function initialize(
+    string memory _name,
+    string memory _symbol,
+    address _owner
+  ) external virtual initializer {
+    __MockERC20Dec18_init(_name, _symbol, _owner);
+  }
 
-  constructor(
-    string memory name,
-    string memory symbol,
-    address owner
-  ) ERC20(name, symbol) {
-    transferOwnership(owner);
+  function __MockERC20Dec18_init(
+    string memory _name,
+    string memory _symbol,
+    address _owner
+  ) internal onlyInitializing {
+    __ERC20_init(_name, _symbol);
+    _transferOwnership(_owner);
   }
 
   function pause() public onlyOwner {
