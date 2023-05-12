@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { expect } from 'chai';
 import {
   utils,
@@ -12,52 +13,17 @@ import {
   OFFER_TYPE_HASH,
 } from '../../src/constants';
 import { MockERC20Dec18Permit } from '../../typechain';
+import {
+  PaymentOption,
+  CancelOption,
+  OfferPayload,
+  Offer,
+  Request,
+} from '../../src/types';
 
 export const nonces: Record<string, number> = {
   request: 1,
 };
-
-export interface Request {
-  id: string;
-  expire: BigNumber;
-  nonce: BigNumber;
-  topic: string;
-  query: unknown;
-}
-
-export interface PaymentOption {
-  id: string;
-  price: BigNumber;
-  asset: string;
-}
-
-export interface CancelOption {
-  time: BigNumber;
-  penalty: BigNumber;
-}
-
-export interface OfferPayload {
-  id: string;
-  expire: BigNumber;
-  supplierId: string;
-  chainId: BigNumber;
-  requestHash: string;
-  optionsHash: string;
-  paymentHash: string;
-  cancelHash: string;
-  transferable: boolean;
-  checkIn: BigNumber;
-  checkOut: BigNumber;
-}
-
-export interface Offer {
-  request: Request;
-  options: unknown;
-  payment: PaymentOption[];
-  cancel: CancelOption[];
-  payload: OfferPayload;
-  signature: string;
-}
 
 export const randomId = (): string =>
   utils.solidityKeccak256(
@@ -374,10 +340,13 @@ export const getCancelPenalty = (options: CancelOption[], timestamp: BigNumber) 
   return selectedPenalty.lte(BigNumber.from(100)) ? selectedPenalty : BigNumber.from(100);
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const structEqual = (struct: { [k: string]: any }, obj: { [k: string]: any }) => {
+export const structEqual = (
+  struct: { [k: string]: any },
+  obj: { [k: string]: any },
+  structName = '',
+) => {
   for (const key of Object.keys(obj)) {
-    expect(obj[key]).to.eq(struct[key]);
+    expect(obj[key]).to.eq(struct[key], `"${structName}.${key}" value validation failed`);
   }
 };
 
