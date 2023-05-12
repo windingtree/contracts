@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
 import "./ERC721Token.sol";
 import "./DealsRegistry.sol";
+import "./libraries/Utils.sol";
 
 /**
  * @title Market
  * @dev This contract enables the creation and management of deals
  * @custom:security-contact security@windingtree.com
  */
-contract Market is Ownable, Pausable, DealsRegistry, ERC721Token {
+contract Market is ERC721Token, DealsRegistry {
   /// @dev Mapping of token Id on offer Id
   mapping(uint256 => bytes32) public tokenOffers;
 
@@ -22,41 +21,35 @@ contract Market is Ownable, Pausable, DealsRegistry, ERC721Token {
   error TokenTransferNotAllowed();
 
   /**
-   * @dev Constructor that initializes the Market contract with the given arguments
+   * @dev Constructor of ERC721Token
+   */
+  /// @custom:oz-upgrades-unsafe-allow constructor
+  constructor() {
+    _disableInitializers();
+  }
+
+  /**
+   * @dev Initializes the Market contract with the given arguments
    * @param _owner The owner of the contract
    * @param _name The name of the contract
    * @param _version The version of the contract
-   * @param _claimPeriod The default time period, in seconds, allowed for the supplier to claim the deal.
-   * @param _protocolFee Protocol's fee in percents
-   * @param _retailerFee Retailer's fee in percents
-   * @param _feeRecipient he recipient of the protocol fee
-   * @param _asset The address of the asset
-   * @param _minDeposit The minimum deposit required for the contract
+   * @param _config The protocol config contract address
+   * @param _entities Entities registry contract address
    */
-  constructor(
+  function initialize(
     address _owner,
     string memory _name,
     string memory _version,
-    uint256 _claimPeriod,
-    uint256 _protocolFee,
-    uint256 _retailerFee,
-    address _feeRecipient,
-    address _asset,
-    uint256 _minDeposit
-  )
-    DealsRegistry(
-      _name,
-      _version,
-      _claimPeriod,
-      _protocolFee,
-      _retailerFee,
-      _feeRecipient,
-      _asset,
-      _minDeposit
-    )
-    ERC721Token("DealToken", "DEAL")
-  {
-    transferOwnership(_owner);
+    address _config,
+    address _entities
+  ) external initializer {
+    _transferOwnership(_owner);
+
+    // Initialize ERC721 token
+    __ERC721Token_init("DealToken", "DEAL");
+
+    // Initialize Deals registry
+    __DealsRegistry_init(_name, _version, _config, _entities);
   }
 
   /// Getters
@@ -89,7 +82,7 @@ contract Market is Ownable, Pausable, DealsRegistry, ERC721Token {
     _unpause();
   }
 
-  /// Deals features
+  /// Features
 
   /**
    * @dev Executes logic before a deal is created
@@ -99,7 +92,7 @@ contract Market is Ownable, Pausable, DealsRegistry, ERC721Token {
    * @param signs The signatures of the offer
    */
   function _beforeCreate(
-    Offer memory offer,
+    Utils.Offer memory offer,
     uint256 price,
     address asset,
     bytes[] memory signs
@@ -115,7 +108,7 @@ contract Market is Ownable, Pausable, DealsRegistry, ERC721Token {
    * @param signs The signatures of the offer
    */
   function _afterCreate(
-    Offer memory offer,
+    Utils.Offer memory offer,
     uint256 price,
     address asset,
     bytes[] memory signs
@@ -168,7 +161,7 @@ contract Market is Ownable, Pausable, DealsRegistry, ERC721Token {
    */
   function tokenURI(
     uint256 tokenId
-  ) public view override(ERC721) returns (string memory) {
+  ) public view override(ERC721Upgradeable) returns (string memory) {
     _requireMinted(tokenId);
     // TODO: Generate data-uri that depends on the id
     return "";
@@ -202,12 +195,13 @@ contract Market is Ownable, Pausable, DealsRegistry, ERC721Token {
         revert DealNotFound();
       }
 
-      Deal storage offerDeal = deals[offerId];
+      Utils.Deal storage offerDeal = deals[offerId];
 
       // Prevent transfer of token when this is not allowed by the offer
       // or the deal is in the non-transferrable status
       if (
-        !offerDeal.offer.transferable || offerDeal.status != DealStatus.Claimed
+        !offerDeal.offer.transferable ||
+        offerDeal.status != Utils.DealStatus.Claimed
       ) {
         revert TokenTransferNotAllowed();
       }

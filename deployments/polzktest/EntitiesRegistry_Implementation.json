@@ -1,0 +1,962 @@
+{
+  "address": "0xa4afeb8dB7C88de6145C849532A592B56cA9bf7E",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "DepositNotEnough",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "DepositTooSmall",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "DepositTransferFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "EntityExists",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "EntityNotFound",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidConfig",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidKind",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidSignature",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidSigner",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotEntityOwner",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "id",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "name": "Deposit",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "id",
+          "type": "bytes32"
+        }
+      ],
+      "name": "EntityRegistered",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint8",
+          "name": "version",
+          "type": "uint8"
+        }
+      ],
+      "name": "Initialized",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnershipTransferred",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "Paused",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "oldAddress",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "newAddress",
+          "type": "address"
+        }
+      ],
+      "name": "SetConfig",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "id",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "oldSigner",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "newSigner",
+          "type": "address"
+        }
+      ],
+      "name": "SignerChanged",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "id",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "enabled",
+          "type": "bool"
+        }
+      ],
+      "name": "ToggleEnabled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "Unpaused",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "id",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "name": "Withdraw",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_id",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_value",
+          "type": "uint256"
+        }
+      ],
+      "name": "addDeposit",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_id",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_value",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_deadline",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes",
+          "name": "sign",
+          "type": "bytes"
+        }
+      ],
+      "name": "addDeposit",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_id",
+          "type": "bytes32"
+        }
+      ],
+      "name": "balanceOfEntity",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_id",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "_signer",
+          "type": "address"
+        }
+      ],
+      "name": "changeSigner",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "config",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_id",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getEntity",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "bytes32",
+              "name": "kind",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "id",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "address",
+              "name": "owner",
+              "type": "address"
+            },
+            {
+              "internalType": "bool",
+              "name": "enabled",
+              "type": "bool"
+            },
+            {
+              "internalType": "address",
+              "name": "signer",
+              "type": "address"
+            }
+          ],
+          "internalType": "struct IEntitiesRegistry.Entity",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_owner",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_config",
+          "type": "address"
+        }
+      ],
+      "name": "initialize",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_id",
+          "type": "bytes32"
+        }
+      ],
+      "name": "isEntityEnabled",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "pause",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "paused",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_kind",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_salt",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "_signer",
+          "type": "address"
+        }
+      ],
+      "name": "register",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "renounceOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_config",
+          "type": "address"
+        }
+      ],
+      "name": "setConfig",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_id",
+          "type": "bytes32"
+        }
+      ],
+      "name": "toggleEntity",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "unpause",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_id",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_value",
+          "type": "uint256"
+        }
+      ],
+      "name": "withdrawDeposit",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0xebee20b7f79a1bd1077af04dfbea9b4b89d5a7a2bc1b57bd1d0c52c658a1f810",
+  "receipt": {
+    "to": null,
+    "from": "0x12DC8e8De1C576284ab25842C2750c749c326301",
+    "contractAddress": "0xa4afeb8dB7C88de6145C849532A592B56cA9bf7E",
+    "transactionIndex": 0,
+    "gasUsed": "1291918",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x1098df3fe033c4b7064f7d6424ed91d5a345c2fd3af911731fb78fcdf3d1706f",
+    "transactionHash": "0xebee20b7f79a1bd1077af04dfbea9b4b89d5a7a2bc1b57bd1d0c52c658a1f810",
+    "logs": [],
+    "blockNumber": 700083,
+    "cumulativeGasUsed": "1291918",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [],
+  "numDeployments": 1,
+  "solcInputHash": "8d0b6126b03e4a7dfd9b020d5703a4a0",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.19+commit.7dd6d404\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"name\":\"DepositNotEnough\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"DepositTooSmall\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"DepositTransferFailed\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"EntityExists\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"EntityNotFound\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidConfig\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidKind\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidSignature\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidSigner\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotEntityOwner\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"id\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"Deposit\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"id\",\"type\":\"bytes32\"}],\"name\":\"EntityRegistered\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint8\",\"name\":\"version\",\"type\":\"uint8\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"Paused\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"oldAddress\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"newAddress\",\"type\":\"address\"}],\"name\":\"SetConfig\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"id\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"oldSigner\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"newSigner\",\"type\":\"address\"}],\"name\":\"SignerChanged\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"id\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"enabled\",\"type\":\"bool\"}],\"name\":\"ToggleEnabled\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"Unpaused\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"id\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"Withdraw\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_id\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"addDeposit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_id\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"_value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_deadline\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"sign\",\"type\":\"bytes\"}],\"name\":\"addDeposit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_id\",\"type\":\"bytes32\"}],\"name\":\"balanceOfEntity\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_id\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"_signer\",\"type\":\"address\"}],\"name\":\"changeSigner\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"config\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_id\",\"type\":\"bytes32\"}],\"name\":\"getEntity\",\"outputs\":[{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"kind\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"id\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"enabled\",\"type\":\"bool\"},{\"internalType\":\"address\",\"name\":\"signer\",\"type\":\"address\"}],\"internalType\":\"struct IEntitiesRegistry.Entity\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_owner\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_config\",\"type\":\"address\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_id\",\"type\":\"bytes32\"}],\"name\":\"isEntityEnabled\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"pause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"paused\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_kind\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"_salt\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"_signer\",\"type\":\"address\"}],\"name\":\"register\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_config\",\"type\":\"address\"}],\"name\":\"setConfig\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_id\",\"type\":\"bytes32\"}],\"name\":\"toggleEntity\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"unpause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_id\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"withdrawDeposit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"details\":\"A smart contract for registering and managing entities who can participate in the protocol.\",\"errors\":{\"DepositNotEnough()\":[{\"details\":\"Throws when the deposit withdrawal is not possible due to slack of funds\"}],\"DepositTooSmall()\":[{\"details\":\"Throws when the deposit value is less than the `minDeposit`\"}],\"DepositTransferFailed()\":[{\"details\":\"Throws when the deposit funds transfer is failed\"}],\"EntityExists()\":[{\"details\":\"Throws when sender attempts to register already existed entity\"}],\"EntityNotFound()\":[{\"details\":\"Throws when entity not found in the registry\"}],\"InvalidConfig()\":[{\"details\":\"Throws when sender attempts to provide invalid configuration\"}],\"InvalidKind()\":[{\"details\":\"Throws when sender attempts refer to non-registered entity type\"}],\"InvalidSigner()\":[{\"details\":\"Throws when sender attempts send invalid signer address\"}],\"NotEntityOwner()\":[{\"details\":\"Throws when sender not an owner of the entity\"}]},\"events\":{\"Deposit(bytes32,address,uint256)\":{\"details\":\"Emitted when a entity makes a deposit\"},\"EntityRegistered(address,bytes32)\":{\"details\":\"Emitted when a Entity is registered\"},\"Initialized(uint8)\":{\"details\":\"Triggered when the contract has been initialized or reinitialized.\"},\"Paused(address)\":{\"details\":\"Emitted when the pause is triggered by `account`.\"},\"SetConfig(address,address)\":{\"details\":\"Emitted when updated an address of the protocol config contract\"},\"SignerChanged(bytes32,address,address,address)\":{\"details\":\"Emitted when the entity's signer is changed\"},\"ToggleEnabled(bytes32,address,bool)\":{\"details\":\"Emitted when a entity's enabled status is toggled\"},\"Unpaused(address)\":{\"details\":\"Emitted when the pause is lifted by `account`.\"},\"Withdraw(bytes32,address,uint256)\":{\"details\":\"Emitted when a entity withdraws a deposit\"}},\"kind\":\"dev\",\"methods\":{\"addDeposit(bytes32,uint256)\":{\"details\":\"See {EntitiesRegistry._addDeposit}.\"},\"addDeposit(bytes32,uint256,uint256,bytes)\":{\"details\":\"Makes deposit of `asset` tokens with permit\",\"params\":{\"_deadline\":\"Deadline time of permit\",\"_id\":\"The entity Id\",\"_sign\":\"Permit signature (EIP712) If `_sign` argument is provided the function will use the `permit` function to transfer tokens from the sender to the contract, overwise the usual `transferFrom` will be used. If the tokens transfer is succeeded: - the function emits `Deposit(bytes32 id, address sender, uint256 value)` event Requirements: - can be called by the entity owner only\",\"_value\":\"Amount of `asset` tokens that must be deposited\"}},\"balanceOfEntity(bytes32)\":{\"details\":\"Returns the value of the entity's deposit\",\"params\":{\"_id\":\"The entity Id\"}},\"changeSigner(bytes32,address)\":{\"details\":\"Changes signer account of the entity\",\"params\":{\"_id\":\"The entity Id\",\"_signer\":\"Account authorized by the entity to sign offers If changing of the signer is succeeded: - the function emits `SignerChanged(bytes32 id, address sender, address oldSigner, address new Signer)` event Requirements: - can be called by the entity owner only\"}},\"getEntity(bytes32)\":{\"details\":\"Returns entity by Id\",\"params\":{\"_id\":\"The entity Id\"}},\"initialize(address,address)\":{\"details\":\"EntitiesRegistry initializer\",\"params\":{\"_config\":\"The protocol config contract address\"}},\"isEntityEnabled(bytes32)\":{\"details\":\"Returns the value of `enabled` entity status\",\"params\":{\"_id\":\"The entity Id\"}},\"owner()\":{\"details\":\"Returns the address of the current owner.\"},\"pause()\":{\"details\":\"Pauses the contract\"},\"paused()\":{\"details\":\"Returns true if the contract is paused, and false otherwise.\"},\"register(bytes32,bytes32,address)\":{\"details\":\"Registers a new entity\",\"params\":{\"_kind\":\"Type of entity\",\"_salt\":\"Unique bytes32 string that allows off-chain calculation of the entity Id\",\"_signer\":\"Account address that authorized by the entity owner to sign offers If registering of the entity is succeeded: - the function emits `EntityRegistered(bytes32 id, bytes32 id)` event Requirements: - `salt` can be used only once. If a `salt` has been used and the entity is registered   the next attempt will results in the error `EntityExists()` - an entity type provided with `_kind` must be registered NOTE: When the entity is registered its initial `enabled` status is set to `false`. This means that to start accepting deals the entity must be enabled\"}},\"renounceOwnership()\":{\"details\":\"Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.\"},\"setConfig(address)\":{\"details\":\"Sets the new address of the protocol config contract address\"},\"toggleEntity(bytes32)\":{\"details\":\"Toggles an enabled status of the entity\",\"params\":{\"_id\":\"The entity Id This function inverts a value of the `enabled` parameter of the entity If toggling is succeeded: - the function emits `ToggleEnabled(bytes32 id, address sender, bool enabled)` event Requirements: - can be called by the entity owner only\"}},\"transferOwnership(address)\":{\"details\":\"Transfers ownership of the contract to a new account (`newOwner`). Can only be called by the current owner.\"},\"unpause()\":{\"details\":\"Unpauses the contract\"},\"withdrawDeposit(bytes32,uint256)\":{\"details\":\"Makes deposit withdrawal of the entity\",\"params\":{\"_id\":\"The entity Id\",\"_value\":\"Amount of `asset` tokens that must be withdrawn If the tokens withdrawal is succeeded: - the function emits `Withdraw(bytes32 id, address sender, uint256 value)` event Requirements: - can be called by the entity owner only\"}}},\"stateVariables\":{\"config\":{\"details\":\"The protocol config contract address\"},\"deposits\":{\"details\":\"Mapping of a entity Id to deposit\"},\"entities\":{\"details\":\"Mapping of a entity Id to Entity storage\"}},\"title\":\"EntitiesRegistry\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/EntitiesRegistry.sol\":\"EntitiesRegistry\"},\"evmVersion\":\"paris\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v4.7.0) (access/Ownable.sol)\\n\\npragma solidity ^0.8.0;\\n\\nimport \\\"../utils/ContextUpgradeable.sol\\\";\\nimport \\\"../proxy/utils/Initializable.sol\\\";\\n\\n/**\\n * @dev Contract module which provides a basic access control mechanism, where\\n * there is an account (an owner) that can be granted exclusive access to\\n * specific functions.\\n *\\n * By default, the owner account will be the one that deploys the contract. This\\n * can later be changed with {transferOwnership}.\\n *\\n * This module is used through inheritance. It will make available the modifier\\n * `onlyOwner`, which can be applied to your functions to restrict their use to\\n * the owner.\\n */\\nabstract contract OwnableUpgradeable is Initializable, ContextUpgradeable {\\n    address private _owner;\\n\\n    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);\\n\\n    /**\\n     * @dev Initializes the contract setting the deployer as the initial owner.\\n     */\\n    function __Ownable_init() internal onlyInitializing {\\n        __Ownable_init_unchained();\\n    }\\n\\n    function __Ownable_init_unchained() internal onlyInitializing {\\n        _transferOwnership(_msgSender());\\n    }\\n\\n    /**\\n     * @dev Throws if called by any account other than the owner.\\n     */\\n    modifier onlyOwner() {\\n        _checkOwner();\\n        _;\\n    }\\n\\n    /**\\n     * @dev Returns the address of the current owner.\\n     */\\n    function owner() public view virtual returns (address) {\\n        return _owner;\\n    }\\n\\n    /**\\n     * @dev Throws if the sender is not the owner.\\n     */\\n    function _checkOwner() internal view virtual {\\n        require(owner() == _msgSender(), \\\"Ownable: caller is not the owner\\\");\\n    }\\n\\n    /**\\n     * @dev Leaves the contract without owner. It will not be possible to call\\n     * `onlyOwner` functions anymore. Can only be called by the current owner.\\n     *\\n     * NOTE: Renouncing ownership will leave the contract without an owner,\\n     * thereby removing any functionality that is only available to the owner.\\n     */\\n    function renounceOwnership() public virtual onlyOwner {\\n        _transferOwnership(address(0));\\n    }\\n\\n    /**\\n     * @dev Transfers ownership of the contract to a new account (`newOwner`).\\n     * Can only be called by the current owner.\\n     */\\n    function transferOwnership(address newOwner) public virtual onlyOwner {\\n        require(newOwner != address(0), \\\"Ownable: new owner is the zero address\\\");\\n        _transferOwnership(newOwner);\\n    }\\n\\n    /**\\n     * @dev Transfers ownership of the contract to a new account (`newOwner`).\\n     * Internal function without access restriction.\\n     */\\n    function _transferOwnership(address newOwner) internal virtual {\\n        address oldOwner = _owner;\\n        _owner = newOwner;\\n        emit OwnershipTransferred(oldOwner, newOwner);\\n    }\\n\\n    /**\\n     * @dev This empty reserved space is put in place to allow future versions to add new\\n     * variables without shifting down storage in the inheritance chain.\\n     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps\\n     */\\n    uint256[49] private __gap;\\n}\\n\",\"keccak256\":\"0x247c62047745915c0af6b955470a72d1696ebad4352d7d3011aef1a2463cd888\",\"license\":\"MIT\"},\"@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v4.8.1) (proxy/utils/Initializable.sol)\\n\\npragma solidity ^0.8.2;\\n\\nimport \\\"../../utils/AddressUpgradeable.sol\\\";\\n\\n/**\\n * @dev This is a base contract to aid in writing upgradeable contracts, or any kind of contract that will be deployed\\n * behind a proxy. Since proxied contracts do not make use of a constructor, it's common to move constructor logic to an\\n * external initializer function, usually called `initialize`. It then becomes necessary to protect this initializer\\n * function so it can only be called once. The {initializer} modifier provided by this contract will have this effect.\\n *\\n * The initialization functions use a version number. Once a version number is used, it is consumed and cannot be\\n * reused. This mechanism prevents re-execution of each \\\"step\\\" but allows the creation of new initialization steps in\\n * case an upgrade adds a module that needs to be initialized.\\n *\\n * For example:\\n *\\n * [.hljs-theme-light.nopadding]\\n * ```\\n * contract MyToken is ERC20Upgradeable {\\n *     function initialize() initializer public {\\n *         __ERC20_init(\\\"MyToken\\\", \\\"MTK\\\");\\n *     }\\n * }\\n * contract MyTokenV2 is MyToken, ERC20PermitUpgradeable {\\n *     function initializeV2() reinitializer(2) public {\\n *         __ERC20Permit_init(\\\"MyToken\\\");\\n *     }\\n * }\\n * ```\\n *\\n * TIP: To avoid leaving the proxy in an uninitialized state, the initializer function should be called as early as\\n * possible by providing the encoded function call as the `_data` argument to {ERC1967Proxy-constructor}.\\n *\\n * CAUTION: When used with inheritance, manual care must be taken to not invoke a parent initializer twice, or to ensure\\n * that all initializers are idempotent. This is not verified automatically as constructors are by Solidity.\\n *\\n * [CAUTION]\\n * ====\\n * Avoid leaving a contract uninitialized.\\n *\\n * An uninitialized contract can be taken over by an attacker. This applies to both a proxy and its implementation\\n * contract, which may impact the proxy. To prevent the implementation contract from being used, you should invoke\\n * the {_disableInitializers} function in the constructor to automatically lock it when it is deployed:\\n *\\n * [.hljs-theme-light.nopadding]\\n * ```\\n * /// @custom:oz-upgrades-unsafe-allow constructor\\n * constructor() {\\n *     _disableInitializers();\\n * }\\n * ```\\n * ====\\n */\\nabstract contract Initializable {\\n    /**\\n     * @dev Indicates that the contract has been initialized.\\n     * @custom:oz-retyped-from bool\\n     */\\n    uint8 private _initialized;\\n\\n    /**\\n     * @dev Indicates that the contract is in the process of being initialized.\\n     */\\n    bool private _initializing;\\n\\n    /**\\n     * @dev Triggered when the contract has been initialized or reinitialized.\\n     */\\n    event Initialized(uint8 version);\\n\\n    /**\\n     * @dev A modifier that defines a protected initializer function that can be invoked at most once. In its scope,\\n     * `onlyInitializing` functions can be used to initialize parent contracts.\\n     *\\n     * Similar to `reinitializer(1)`, except that functions marked with `initializer` can be nested in the context of a\\n     * constructor.\\n     *\\n     * Emits an {Initialized} event.\\n     */\\n    modifier initializer() {\\n        bool isTopLevelCall = !_initializing;\\n        require(\\n            (isTopLevelCall && _initialized < 1) || (!AddressUpgradeable.isContract(address(this)) && _initialized == 1),\\n            \\\"Initializable: contract is already initialized\\\"\\n        );\\n        _initialized = 1;\\n        if (isTopLevelCall) {\\n            _initializing = true;\\n        }\\n        _;\\n        if (isTopLevelCall) {\\n            _initializing = false;\\n            emit Initialized(1);\\n        }\\n    }\\n\\n    /**\\n     * @dev A modifier that defines a protected reinitializer function that can be invoked at most once, and only if the\\n     * contract hasn't been initialized to a greater version before. In its scope, `onlyInitializing` functions can be\\n     * used to initialize parent contracts.\\n     *\\n     * A reinitializer may be used after the original initialization step. This is essential to configure modules that\\n     * are added through upgrades and that require initialization.\\n     *\\n     * When `version` is 1, this modifier is similar to `initializer`, except that functions marked with `reinitializer`\\n     * cannot be nested. If one is invoked in the context of another, execution will revert.\\n     *\\n     * Note that versions can jump in increments greater than 1; this implies that if multiple reinitializers coexist in\\n     * a contract, executing them in the right order is up to the developer or operator.\\n     *\\n     * WARNING: setting the version to 255 will prevent any future reinitialization.\\n     *\\n     * Emits an {Initialized} event.\\n     */\\n    modifier reinitializer(uint8 version) {\\n        require(!_initializing && _initialized < version, \\\"Initializable: contract is already initialized\\\");\\n        _initialized = version;\\n        _initializing = true;\\n        _;\\n        _initializing = false;\\n        emit Initialized(version);\\n    }\\n\\n    /**\\n     * @dev Modifier to protect an initialization function so that it can only be invoked by functions with the\\n     * {initializer} and {reinitializer} modifiers, directly or indirectly.\\n     */\\n    modifier onlyInitializing() {\\n        require(_initializing, \\\"Initializable: contract is not initializing\\\");\\n        _;\\n    }\\n\\n    /**\\n     * @dev Locks the contract, preventing any future reinitialization. This cannot be part of an initializer call.\\n     * Calling this in the constructor of a contract will prevent that contract from being initialized or reinitialized\\n     * to any version. It is recommended to use this to lock implementation contracts that are designed to be called\\n     * through proxies.\\n     *\\n     * Emits an {Initialized} event the first time it is successfully executed.\\n     */\\n    function _disableInitializers() internal virtual {\\n        require(!_initializing, \\\"Initializable: contract is initializing\\\");\\n        if (_initialized < type(uint8).max) {\\n            _initialized = type(uint8).max;\\n            emit Initialized(type(uint8).max);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the highest version that has been initialized. See {reinitializer}.\\n     */\\n    function _getInitializedVersion() internal view returns (uint8) {\\n        return _initialized;\\n    }\\n\\n    /**\\n     * @dev Returns `true` if the contract is currently initializing. See {onlyInitializing}.\\n     */\\n    function _isInitializing() internal view returns (bool) {\\n        return _initializing;\\n    }\\n}\\n\",\"keccak256\":\"0x037c334add4b033ad3493038c25be1682d78c00992e1acb0e2795caff3925271\",\"license\":\"MIT\"},\"@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v4.7.0) (security/Pausable.sol)\\n\\npragma solidity ^0.8.0;\\n\\nimport \\\"../utils/ContextUpgradeable.sol\\\";\\nimport \\\"../proxy/utils/Initializable.sol\\\";\\n\\n/**\\n * @dev Contract module which allows children to implement an emergency stop\\n * mechanism that can be triggered by an authorized account.\\n *\\n * This module is used through inheritance. It will make available the\\n * modifiers `whenNotPaused` and `whenPaused`, which can be applied to\\n * the functions of your contract. Note that they will not be pausable by\\n * simply including this module, only once the modifiers are put in place.\\n */\\nabstract contract PausableUpgradeable is Initializable, ContextUpgradeable {\\n    /**\\n     * @dev Emitted when the pause is triggered by `account`.\\n     */\\n    event Paused(address account);\\n\\n    /**\\n     * @dev Emitted when the pause is lifted by `account`.\\n     */\\n    event Unpaused(address account);\\n\\n    bool private _paused;\\n\\n    /**\\n     * @dev Initializes the contract in unpaused state.\\n     */\\n    function __Pausable_init() internal onlyInitializing {\\n        __Pausable_init_unchained();\\n    }\\n\\n    function __Pausable_init_unchained() internal onlyInitializing {\\n        _paused = false;\\n    }\\n\\n    /**\\n     * @dev Modifier to make a function callable only when the contract is not paused.\\n     *\\n     * Requirements:\\n     *\\n     * - The contract must not be paused.\\n     */\\n    modifier whenNotPaused() {\\n        _requireNotPaused();\\n        _;\\n    }\\n\\n    /**\\n     * @dev Modifier to make a function callable only when the contract is paused.\\n     *\\n     * Requirements:\\n     *\\n     * - The contract must be paused.\\n     */\\n    modifier whenPaused() {\\n        _requirePaused();\\n        _;\\n    }\\n\\n    /**\\n     * @dev Returns true if the contract is paused, and false otherwise.\\n     */\\n    function paused() public view virtual returns (bool) {\\n        return _paused;\\n    }\\n\\n    /**\\n     * @dev Throws if the contract is paused.\\n     */\\n    function _requireNotPaused() internal view virtual {\\n        require(!paused(), \\\"Pausable: paused\\\");\\n    }\\n\\n    /**\\n     * @dev Throws if the contract is not paused.\\n     */\\n    function _requirePaused() internal view virtual {\\n        require(paused(), \\\"Pausable: not paused\\\");\\n    }\\n\\n    /**\\n     * @dev Triggers stopped state.\\n     *\\n     * Requirements:\\n     *\\n     * - The contract must not be paused.\\n     */\\n    function _pause() internal virtual whenNotPaused {\\n        _paused = true;\\n        emit Paused(_msgSender());\\n    }\\n\\n    /**\\n     * @dev Returns to normal state.\\n     *\\n     * Requirements:\\n     *\\n     * - The contract must be paused.\\n     */\\n    function _unpause() internal virtual whenPaused {\\n        _paused = false;\\n        emit Unpaused(_msgSender());\\n    }\\n\\n    /**\\n     * @dev This empty reserved space is put in place to allow future versions to add new\\n     * variables without shifting down storage in the inheritance chain.\\n     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps\\n     */\\n    uint256[49] private __gap;\\n}\\n\",\"keccak256\":\"0x40c636b4572ff5f1dc50cf22097e93c0723ee14eff87e99ac2b02636eeca1250\",\"license\":\"MIT\"},\"@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v4.8.0) (utils/Address.sol)\\n\\npragma solidity ^0.8.1;\\n\\n/**\\n * @dev Collection of functions related to the address type\\n */\\nlibrary AddressUpgradeable {\\n    /**\\n     * @dev Returns true if `account` is a contract.\\n     *\\n     * [IMPORTANT]\\n     * ====\\n     * It is unsafe to assume that an address for which this function returns\\n     * false is an externally-owned account (EOA) and not a contract.\\n     *\\n     * Among others, `isContract` will return false for the following\\n     * types of addresses:\\n     *\\n     *  - an externally-owned account\\n     *  - a contract in construction\\n     *  - an address where a contract will be created\\n     *  - an address where a contract lived, but was destroyed\\n     * ====\\n     *\\n     * [IMPORTANT]\\n     * ====\\n     * You shouldn't rely on `isContract` to protect against flash loan attacks!\\n     *\\n     * Preventing calls from contracts is highly discouraged. It breaks composability, breaks support for smart wallets\\n     * like Gnosis Safe, and does not provide security since it can be circumvented by calling from a contract\\n     * constructor.\\n     * ====\\n     */\\n    function isContract(address account) internal view returns (bool) {\\n        // This method relies on extcodesize/address.code.length, which returns 0\\n        // for contracts in construction, since the code is only stored at the end\\n        // of the constructor execution.\\n\\n        return account.code.length > 0;\\n    }\\n\\n    /**\\n     * @dev Replacement for Solidity's `transfer`: sends `amount` wei to\\n     * `recipient`, forwarding all available gas and reverting on errors.\\n     *\\n     * https://eips.ethereum.org/EIPS/eip-1884[EIP1884] increases the gas cost\\n     * of certain opcodes, possibly making contracts go over the 2300 gas limit\\n     * imposed by `transfer`, making them unable to receive funds via\\n     * `transfer`. {sendValue} removes this limitation.\\n     *\\n     * https://diligence.consensys.net/posts/2019/09/stop-using-soliditys-transfer-now/[Learn more].\\n     *\\n     * IMPORTANT: because control is transferred to `recipient`, care must be\\n     * taken to not create reentrancy vulnerabilities. Consider using\\n     * {ReentrancyGuard} or the\\n     * https://solidity.readthedocs.io/en/v0.5.11/security-considerations.html#use-the-checks-effects-interactions-pattern[checks-effects-interactions pattern].\\n     */\\n    function sendValue(address payable recipient, uint256 amount) internal {\\n        require(address(this).balance >= amount, \\\"Address: insufficient balance\\\");\\n\\n        (bool success, ) = recipient.call{value: amount}(\\\"\\\");\\n        require(success, \\\"Address: unable to send value, recipient may have reverted\\\");\\n    }\\n\\n    /**\\n     * @dev Performs a Solidity function call using a low level `call`. A\\n     * plain `call` is an unsafe replacement for a function call: use this\\n     * function instead.\\n     *\\n     * If `target` reverts with a revert reason, it is bubbled up by this\\n     * function (like regular Solidity function calls).\\n     *\\n     * Returns the raw returned data. To convert to the expected return value,\\n     * use https://solidity.readthedocs.io/en/latest/units-and-global-variables.html?highlight=abi.decode#abi-encoding-and-decoding-functions[`abi.decode`].\\n     *\\n     * Requirements:\\n     *\\n     * - `target` must be a contract.\\n     * - calling `target` with `data` must not revert.\\n     *\\n     * _Available since v3.1._\\n     */\\n    function functionCall(address target, bytes memory data) internal returns (bytes memory) {\\n        return functionCallWithValue(target, data, 0, \\\"Address: low-level call failed\\\");\\n    }\\n\\n    /**\\n     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`], but with\\n     * `errorMessage` as a fallback revert reason when `target` reverts.\\n     *\\n     * _Available since v3.1._\\n     */\\n    function functionCall(\\n        address target,\\n        bytes memory data,\\n        string memory errorMessage\\n    ) internal returns (bytes memory) {\\n        return functionCallWithValue(target, data, 0, errorMessage);\\n    }\\n\\n    /**\\n     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],\\n     * but also transferring `value` wei to `target`.\\n     *\\n     * Requirements:\\n     *\\n     * - the calling contract must have an ETH balance of at least `value`.\\n     * - the called Solidity function must be `payable`.\\n     *\\n     * _Available since v3.1._\\n     */\\n    function functionCallWithValue(\\n        address target,\\n        bytes memory data,\\n        uint256 value\\n    ) internal returns (bytes memory) {\\n        return functionCallWithValue(target, data, value, \\\"Address: low-level call with value failed\\\");\\n    }\\n\\n    /**\\n     * @dev Same as {xref-Address-functionCallWithValue-address-bytes-uint256-}[`functionCallWithValue`], but\\n     * with `errorMessage` as a fallback revert reason when `target` reverts.\\n     *\\n     * _Available since v3.1._\\n     */\\n    function functionCallWithValue(\\n        address target,\\n        bytes memory data,\\n        uint256 value,\\n        string memory errorMessage\\n    ) internal returns (bytes memory) {\\n        require(address(this).balance >= value, \\\"Address: insufficient balance for call\\\");\\n        (bool success, bytes memory returndata) = target.call{value: value}(data);\\n        return verifyCallResultFromTarget(target, success, returndata, errorMessage);\\n    }\\n\\n    /**\\n     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],\\n     * but performing a static call.\\n     *\\n     * _Available since v3.3._\\n     */\\n    function functionStaticCall(address target, bytes memory data) internal view returns (bytes memory) {\\n        return functionStaticCall(target, data, \\\"Address: low-level static call failed\\\");\\n    }\\n\\n    /**\\n     * @dev Same as {xref-Address-functionCall-address-bytes-string-}[`functionCall`],\\n     * but performing a static call.\\n     *\\n     * _Available since v3.3._\\n     */\\n    function functionStaticCall(\\n        address target,\\n        bytes memory data,\\n        string memory errorMessage\\n    ) internal view returns (bytes memory) {\\n        (bool success, bytes memory returndata) = target.staticcall(data);\\n        return verifyCallResultFromTarget(target, success, returndata, errorMessage);\\n    }\\n\\n    /**\\n     * @dev Tool to verify that a low level call to smart-contract was successful, and revert (either by bubbling\\n     * the revert reason or using the provided one) in case of unsuccessful call or if target was not a contract.\\n     *\\n     * _Available since v4.8._\\n     */\\n    function verifyCallResultFromTarget(\\n        address target,\\n        bool success,\\n        bytes memory returndata,\\n        string memory errorMessage\\n    ) internal view returns (bytes memory) {\\n        if (success) {\\n            if (returndata.length == 0) {\\n                // only check isContract if the call was successful and the return data is empty\\n                // otherwise we already know that it was a contract\\n                require(isContract(target), \\\"Address: call to non-contract\\\");\\n            }\\n            return returndata;\\n        } else {\\n            _revert(returndata, errorMessage);\\n        }\\n    }\\n\\n    /**\\n     * @dev Tool to verify that a low level call was successful, and revert if it wasn't, either by bubbling the\\n     * revert reason or using the provided one.\\n     *\\n     * _Available since v4.3._\\n     */\\n    function verifyCallResult(\\n        bool success,\\n        bytes memory returndata,\\n        string memory errorMessage\\n    ) internal pure returns (bytes memory) {\\n        if (success) {\\n            return returndata;\\n        } else {\\n            _revert(returndata, errorMessage);\\n        }\\n    }\\n\\n    function _revert(bytes memory returndata, string memory errorMessage) private pure {\\n        // Look for revert reason and bubble it up if present\\n        if (returndata.length > 0) {\\n            // The easiest way to bubble the revert reason is using memory via assembly\\n            /// @solidity memory-safe-assembly\\n            assembly {\\n                let returndata_size := mload(returndata)\\n                revert(add(32, returndata), returndata_size)\\n            }\\n        } else {\\n            revert(errorMessage);\\n        }\\n    }\\n}\\n\",\"keccak256\":\"0x2edcb41c121abc510932e8d83ff8b82cf9cdde35e7c297622f5c29ef0af25183\",\"license\":\"MIT\"},\"@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts v4.4.1 (utils/Context.sol)\\n\\npragma solidity ^0.8.0;\\nimport \\\"../proxy/utils/Initializable.sol\\\";\\n\\n/**\\n * @dev Provides information about the current execution context, including the\\n * sender of the transaction and its data. While these are generally available\\n * via msg.sender and msg.data, they should not be accessed in such a direct\\n * manner, since when dealing with meta-transactions the account sending and\\n * paying for execution may not be the actual sender (as far as an application\\n * is concerned).\\n *\\n * This contract is only required for intermediate, library-like contracts.\\n */\\nabstract contract ContextUpgradeable is Initializable {\\n    function __Context_init() internal onlyInitializing {\\n    }\\n\\n    function __Context_init_unchained() internal onlyInitializing {\\n    }\\n    function _msgSender() internal view virtual returns (address) {\\n        return msg.sender;\\n    }\\n\\n    function _msgData() internal view virtual returns (bytes calldata) {\\n        return msg.data;\\n    }\\n\\n    /**\\n     * @dev This empty reserved space is put in place to allow future versions to add new\\n     * variables without shifting down storage in the inheritance chain.\\n     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps\\n     */\\n    uint256[50] private __gap;\\n}\\n\",\"keccak256\":\"0x963ea7f0b48b032eef72fe3a7582edf78408d6f834115b9feadd673a4d5bd149\",\"license\":\"MIT\"},\"@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v4.6.0) (utils/math/SafeMath.sol)\\n\\npragma solidity ^0.8.0;\\n\\n// CAUTION\\n// This version of SafeMath should only be used with Solidity 0.8 or later,\\n// because it relies on the compiler's built in overflow checks.\\n\\n/**\\n * @dev Wrappers over Solidity's arithmetic operations.\\n *\\n * NOTE: `SafeMath` is generally not needed starting with Solidity 0.8, since the compiler\\n * now has built in overflow checking.\\n */\\nlibrary SafeMathUpgradeable {\\n    /**\\n     * @dev Returns the addition of two unsigned integers, with an overflow flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function tryAdd(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            uint256 c = a + b;\\n            if (c < a) return (false, 0);\\n            return (true, c);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the subtraction of two unsigned integers, with an overflow flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function trySub(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            if (b > a) return (false, 0);\\n            return (true, a - b);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the multiplication of two unsigned integers, with an overflow flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function tryMul(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            // Gas optimization: this is cheaper than requiring 'a' not being zero, but the\\n            // benefit is lost if 'b' is also tested.\\n            // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522\\n            if (a == 0) return (true, 0);\\n            uint256 c = a * b;\\n            if (c / a != b) return (false, 0);\\n            return (true, c);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the division of two unsigned integers, with a division by zero flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function tryDiv(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            if (b == 0) return (false, 0);\\n            return (true, a / b);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the remainder of dividing two unsigned integers, with a division by zero flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function tryMod(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            if (b == 0) return (false, 0);\\n            return (true, a % b);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the addition of two unsigned integers, reverting on\\n     * overflow.\\n     *\\n     * Counterpart to Solidity's `+` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Addition cannot overflow.\\n     */\\n    function add(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a + b;\\n    }\\n\\n    /**\\n     * @dev Returns the subtraction of two unsigned integers, reverting on\\n     * overflow (when the result is negative).\\n     *\\n     * Counterpart to Solidity's `-` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Subtraction cannot overflow.\\n     */\\n    function sub(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a - b;\\n    }\\n\\n    /**\\n     * @dev Returns the multiplication of two unsigned integers, reverting on\\n     * overflow.\\n     *\\n     * Counterpart to Solidity's `*` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Multiplication cannot overflow.\\n     */\\n    function mul(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a * b;\\n    }\\n\\n    /**\\n     * @dev Returns the integer division of two unsigned integers, reverting on\\n     * division by zero. The result is rounded towards zero.\\n     *\\n     * Counterpart to Solidity's `/` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function div(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a / b;\\n    }\\n\\n    /**\\n     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),\\n     * reverting when dividing by zero.\\n     *\\n     * Counterpart to Solidity's `%` operator. This function uses a `revert`\\n     * opcode (which leaves remaining gas untouched) while Solidity uses an\\n     * invalid opcode to revert (consuming all remaining gas).\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function mod(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a % b;\\n    }\\n\\n    /**\\n     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on\\n     * overflow (when the result is negative).\\n     *\\n     * CAUTION: This function is deprecated because it requires allocating memory for the error\\n     * message unnecessarily. For custom revert reasons use {trySub}.\\n     *\\n     * Counterpart to Solidity's `-` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Subtraction cannot overflow.\\n     */\\n    function sub(\\n        uint256 a,\\n        uint256 b,\\n        string memory errorMessage\\n    ) internal pure returns (uint256) {\\n        unchecked {\\n            require(b <= a, errorMessage);\\n            return a - b;\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the integer division of two unsigned integers, reverting with custom message on\\n     * division by zero. The result is rounded towards zero.\\n     *\\n     * Counterpart to Solidity's `/` operator. Note: this function uses a\\n     * `revert` opcode (which leaves remaining gas untouched) while Solidity\\n     * uses an invalid opcode to revert (consuming all remaining gas).\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function div(\\n        uint256 a,\\n        uint256 b,\\n        string memory errorMessage\\n    ) internal pure returns (uint256) {\\n        unchecked {\\n            require(b > 0, errorMessage);\\n            return a / b;\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),\\n     * reverting with custom message when dividing by zero.\\n     *\\n     * CAUTION: This function is deprecated because it requires allocating memory for the error\\n     * message unnecessarily. For custom revert reasons use {tryMod}.\\n     *\\n     * Counterpart to Solidity's `%` operator. This function uses a `revert`\\n     * opcode (which leaves remaining gas untouched) while Solidity uses an\\n     * invalid opcode to revert (consuming all remaining gas).\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function mod(\\n        uint256 a,\\n        uint256 b,\\n        string memory errorMessage\\n    ) internal pure returns (uint256) {\\n        unchecked {\\n            require(b > 0, errorMessage);\\n            return a % b;\\n        }\\n    }\\n}\\n\",\"keccak256\":\"0xcaa8b7861115ea691c77ddbeac140a444e0edcd1d9812a43942c0f6b42b36a49\",\"license\":\"MIT\"},\"contracts/EntitiesRegistry.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.19;\\n\\nimport \\\"@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol\\\";\\nimport \\\"@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol\\\";\\nimport \\\"@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol\\\";\\nimport \\\"./interfaces/IEntitiesRegistry.sol\\\";\\nimport \\\"./interfaces/IConfig.sol\\\";\\nimport \\\"./libraries/SignatureUtils.sol\\\";\\nimport \\\"./utils/IERC20.sol\\\";\\n\\n/**\\n * @title EntitiesRegistry\\n * @dev A smart contract for registering and managing entities who can participate in the protocol.\\n */\\ncontract EntitiesRegistry is\\n  IEntitiesRegistry,\\n  PausableUpgradeable,\\n  OwnableUpgradeable\\n{\\n  using SafeMathUpgradeable for uint256;\\n  using SignatureUtils for bytes;\\n\\n  /// @dev The protocol config contract address\\n  address public config;\\n\\n  /// @dev Mapping of a entity Id to Entity storage\\n  mapping(bytes32 => Entity) private entities;\\n\\n  /// @dev Mapping of a entity Id to deposit\\n  mapping(bytes32 => uint256) private deposits;\\n\\n  /// Events\\n\\n  /// @dev Emitted when a Entity is registered\\n  event EntityRegistered(address owner, bytes32 id);\\n\\n  /// @dev Emitted when the entity's signer is changed\\n  event SignerChanged(\\n    bytes32 id,\\n    address sender,\\n    address oldSigner,\\n    address newSigner\\n  );\\n\\n  /// @dev Emitted when updated an address of the protocol config contract\\n  event SetConfig(address oldAddress, address newAddress);\\n\\n  /// @dev Emitted when a entity's enabled status is toggled\\n  event ToggleEnabled(bytes32 id, address sender, bool enabled);\\n\\n  /// @dev Emitted when a entity makes a deposit\\n  event Deposit(bytes32 id, address sender, uint256 value);\\n\\n  /// @dev Emitted when a entity withdraws a deposit\\n  event Withdraw(bytes32 id, address sender, uint256 value);\\n\\n  /// Errors\\n\\n  /// @dev Throws when sender attempts to provide invalid configuration\\n  error InvalidConfig();\\n\\n  /// @dev Throws when sender attempts refer to non-registered entity type\\n  error InvalidKind();\\n\\n  /// @dev Throws when sender attempts send invalid signer address\\n  error InvalidSigner();\\n\\n  /// @dev Throws when sender attempts to register already existed entity\\n  error EntityExists();\\n\\n  /// @dev Throws when entity not found in the registry\\n  error EntityNotFound();\\n\\n  /// @dev Throws when sender not an owner of the entity\\n  error NotEntityOwner();\\n\\n  /// @dev Throws when the deposit value is less than the `minDeposit`\\n  error DepositTooSmall();\\n\\n  /// @dev Throws when the deposit funds transfer is failed\\n  error DepositTransferFailed();\\n\\n  /// @dev Throws when the deposit withdrawal is not possible due to slack of funds\\n  error DepositNotEnough();\\n\\n  /// @dev Prevents function execution when entity not found\\n  modifier entityExists(bytes32 _id) {\\n    Entity storage entity = entities[_id];\\n    if (entity.owner == address(0)) {\\n      revert EntityNotFound();\\n    }\\n    _;\\n  }\\n\\n  /// @dev Checks is the caller is entity owner\\n  modifier onlyEntityOwner(bytes32 _id) {\\n    if (entities[_id].owner != _msgSender()) {\\n      revert NotEntityOwner();\\n    }\\n    _;\\n  }\\n\\n  /**\\n   * @dev EntitiesRegistry initializer\\n   * @param _config The protocol config contract address\\n   */\\n  function initialize(address _owner, address _config) external initializer {\\n    // Set owner\\n    _transferOwnership(_owner);\\n\\n    // Initialize pausable behaviour\\n    __Pausable_init();\\n\\n    // Save the protocol config contract address\\n    config = _config;\\n  }\\n\\n  /// Getters\\n\\n  /// @inheritdoc IEntitiesRegistry\\n  function getEntity(\\n    bytes32 _id\\n  ) external view entityExists(_id) returns (Entity memory) {\\n    return entities[_id];\\n  }\\n\\n  /// @inheritdoc IEntitiesRegistry\\n  function balanceOfEntity(\\n    bytes32 _id\\n  ) public view entityExists(_id) returns (uint256) {\\n    return deposits[_id];\\n  }\\n\\n  /// @inheritdoc IEntitiesRegistry\\n  function isEntityEnabled(\\n    bytes32 _id\\n  ) external view entityExists(_id) returns (bool) {\\n    return entities[_id].enabled && deposits[_id] > 0;\\n  }\\n\\n  /// Pausable features\\n\\n  /**\\n   * @dev Pauses the contract\\n   */\\n  function pause() public onlyOwner {\\n    _pause();\\n  }\\n\\n  /**\\n   * @dev Unpauses the contract\\n   */\\n  function unpause() public onlyOwner {\\n    _unpause();\\n  }\\n\\n  /// Features\\n\\n  /// @inheritdoc IEntitiesRegistry\\n  function setConfig(address _config) external onlyOwner {\\n    emit SetConfig(config, _config);\\n    config = _config;\\n  }\\n\\n  /// @inheritdoc IEntitiesRegistry\\n  function register(\\n    bytes32 _kind,\\n    bytes32 _salt,\\n    address _signer\\n  ) external whenNotPaused {\\n    if (IConfig(config).getMinDeposit(_kind) == 0) {\\n      revert InvalidKind();\\n    }\\n\\n    address entityOwner = _msgSender();\\n    bytes32 id = keccak256(abi.encodePacked(entityOwner, _salt));\\n\\n    if (entities[id].id == id) {\\n      revert EntityExists();\\n    }\\n\\n    entities[id] = Entity(_kind, id, entityOwner, false, _signer);\\n    emit EntityRegistered(entityOwner, id);\\n  }\\n\\n  /// @inheritdoc IEntitiesRegistry\\n  function changeSigner(\\n    bytes32 _id,\\n    address _signer\\n  ) external onlyEntityOwner(_id) whenNotPaused {\\n    if (_signer == address(0)) {\\n      revert InvalidSigner();\\n    }\\n    address oldSigner = entities[_id].signer;\\n    entities[_id].signer = _signer;\\n    emit SignerChanged(_id, _msgSender(), oldSigner, _signer);\\n  }\\n\\n  /// @inheritdoc IEntitiesRegistry\\n  function toggleEntity(\\n    bytes32 _id\\n  ) external entityExists(_id) onlyEntityOwner(_id) whenNotPaused {\\n    bool enabled = !entities[_id].enabled;\\n    entities[_id].enabled = enabled;\\n    emit ToggleEnabled(_id, _msgSender(), enabled);\\n  }\\n\\n  /// @inheritdoc IEntitiesRegistry\\n  function addDeposit(\\n    bytes32 _id,\\n    uint256 _value\\n  ) external entityExists(_id) whenNotPaused {\\n    _addDeposit(_id, _value, 0, \\\"\\\");\\n  }\\n\\n  /// @inheritdoc IEntitiesRegistry\\n  function addDeposit(\\n    bytes32 _id,\\n    uint256 _value,\\n    uint256 _deadline,\\n    bytes memory sign\\n  ) external entityExists(_id) whenNotPaused {\\n    _addDeposit(_id, _value, _deadline, sign);\\n  }\\n\\n  /// @inheritdoc IEntitiesRegistry\\n  function withdrawDeposit(\\n    bytes32 _id,\\n    uint256 _value\\n  ) external entityExists(_id) onlyEntityOwner(_id) whenNotPaused {\\n    // TODO: Implement withdrawal delay\\n\\n    if (deposits[_id] < _value) {\\n      revert DepositNotEnough();\\n    }\\n\\n    if (\\n      !IERC20(IConfig(config).getAddress(\\\"asset\\\")).transfer(\\n        _msgSender(),\\n        _value\\n      )\\n    ) {\\n      revert DepositTransferFailed();\\n    }\\n\\n    deposits[_id] = deposits[_id].sub(_value);\\n\\n    emit Withdraw(_id, _msgSender(), _value);\\n  }\\n\\n  /// Internal functions\\n\\n  /// @dev Makes deposit of `asset` tokens with permit\\n  function _addDeposit(\\n    bytes32 _id,\\n    uint256 _value,\\n    uint256 _deadline,\\n    bytes memory _sign\\n  ) internal onlyEntityOwner(_id) {\\n    if (\\n      deposits[_id].add(_value) <\\n      IConfig(config).getMinDeposit(entities[_id].kind)\\n    ) {\\n      revert DepositTooSmall();\\n    }\\n\\n    address entityOwner = _msgSender();\\n    address asset = IConfig(config).getAddress(\\\"asset\\\");\\n\\n    if (_sign.length > 0) {\\n      // Use permit function to transfer tokens from the sender to the contract\\n      (uint8 v, bytes32 r, bytes32 s) = _sign.split();\\n      IERC20(asset).permit(\\n        entityOwner,\\n        address(this),\\n        _value,\\n        _deadline,\\n        v,\\n        r,\\n        s\\n      );\\n    }\\n\\n    // Use transferFrom function to transfer tokens from the sender to the contract\\n    if (!IERC20(asset).transferFrom(entityOwner, address(this), _value)) {\\n      revert DepositTransferFailed();\\n    }\\n\\n    deposits[_id] = deposits[_id].add(_value);\\n\\n    emit Deposit(_id, entityOwner, _value);\\n  }\\n\\n  uint256[50] private __gap;\\n}\\n\",\"keccak256\":\"0xa9dfdbdc160eb8d70ccea92ecbd48a1b979af19fd0d9194babc528506accf377\",\"license\":\"MIT\"},\"contracts/interfaces/IConfig.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.19;\\n\\n/**\\n * @title Configurable contract interface\\n * @dev Interface for a contract that allows for dynamic configuration of uint256 and address values.\\n */\\ninterface IConfig {\\n  /**\\n   * @dev Returns a number by name\\n   * @param _name A number name\\n   * @return The value of the number\\n   */\\n  function getNumber(bytes32 _name) external view returns (uint256);\\n\\n  /**\\n   * @dev Returns an address by name\\n   * @param _name An address name\\n   * @return The address value\\n   */\\n  function getAddress(bytes32 _name) external view returns (address);\\n\\n  /**\\n   * @dev Returns a list of registered config variables names\\n   * @return Array of registered variables names\\n   */\\n  function variables() external view returns (bytes32[] memory);\\n\\n  /**\\n   * @dev Returns a minDeposit value of the entity\\n   * @param _name An entity name\\n   * @return The value of the number\\n   */\\n  function getMinDeposit(bytes32 _name) external view returns (uint256);\\n\\n  /**\\n   * @dev Changes variable uint256 of value\\n   * @param name Name of variable\\n   * @param value Value of variable\\n   */\\n  function config(bytes32 name, uint256 value) external;\\n\\n  /**\\n   * @dev Changes variable address of value\\n   * @param name Name of variable\\n   * @param value Value of variable\\n   */\\n  function config(bytes32 name, address value) external;\\n\\n  /**\\n   * @dev Sets minimum deposits values\\n   * @param _kinds Supported entity types\\n   * @param _minDeposits Minimum value of deposit\\n   */\\n  function setMinDeposits(\\n    bytes32[] memory _kinds,\\n    uint256[] memory _minDeposits\\n  ) external;\\n}\\n\",\"keccak256\":\"0x47c6b566e13ed415ae815097092e0482b39832a76aeadccfd8a889d9d03b8518\",\"license\":\"MIT\"},\"contracts/interfaces/IEntitiesRegistry.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.19;\\n\\n/**\\n * @title IEntitiesRegistry\\n * @dev A smart contract interface for registering and managing entities who can participate in the protocol.\\n */\\ninterface IEntitiesRegistry {\\n  /**\\n   * @dev Entity storage struct\\n   * @param id Unique entity Id\\n   * @param owner Owner of the entity entity\\n   * @param enabled The entity entity activity flag\\n   * @param signer Offers signer\\n   */\\n  struct Entity {\\n    bytes32 kind;\\n    bytes32 id;\\n    address owner;\\n    bool enabled;\\n    address signer;\\n  }\\n\\n  /**\\n   * @dev Returns entity by Id\\n   * @param _id The entity Id\\n   */\\n  function getEntity(bytes32 _id) external view returns (Entity memory);\\n\\n  /**\\n   * @dev Returns the value of the entity's deposit\\n   * @param _id The entity Id\\n   */\\n  function balanceOfEntity(bytes32 _id) external view returns (uint256);\\n\\n  /**\\n   * @dev Returns the value of `enabled` entity status\\n   * @param _id The entity Id\\n   */\\n  function isEntityEnabled(bytes32 _id) external view returns (bool);\\n\\n  /**\\n   * @dev Sets the new address of the protocol config contract address\\n   */\\n  function setConfig(address _config) external;\\n\\n  /**\\n   * @dev Registers a new entity\\n   * @param _kind Type of entity\\n   * @param _salt Unique bytes32 string that allows off-chain calculation of the entity Id\\n   * @param _signer Account address that authorized by the entity owner to sign offers\\n   *\\n   * If registering of the entity is succeeded:\\n   * - the function emits `EntityRegistered(bytes32 id, bytes32 id)` event\\n   *\\n   * Requirements:\\n   *\\n   * - `salt` can be used only once. If a `salt` has been used and the entity is registered\\n   *   the next attempt will results in the error `EntityExists()`\\n   * - an entity type provided with `_kind` must be registered\\n   *\\n   * NOTE: When the entity is registered its initial `enabled` status is set to `false`.\\n   * This means that to start accepting deals the entity must be enabled\\n   */\\n  function register(bytes32 _kind, bytes32 _salt, address _signer) external;\\n\\n  /**\\n   * @dev Changes signer account of the entity\\n   * @param _id The entity Id\\n   * @param _signer Account authorized by the entity to sign offers\\n   *\\n   * If changing of the signer is succeeded:\\n   * - the function emits `SignerChanged(bytes32 id, address sender, address oldSigner, address new Signer)` event\\n   *\\n   * Requirements:\\n   *\\n   * - can be called by the entity owner only\\n   */\\n  function changeSigner(bytes32 _id, address _signer) external;\\n\\n  /**\\n   * @dev Toggles an enabled status of the entity\\n   * @param _id The entity Id\\n   *\\n   * This function inverts a value of the `enabled` parameter of the entity\\n   *\\n   * If toggling is succeeded:\\n   * - the function emits `ToggleEnabled(bytes32 id, address sender, bool enabled)` event\\n   *\\n   * Requirements:\\n   *\\n   * - can be called by the entity owner only\\n   */\\n  function toggleEntity(bytes32 _id) external;\\n\\n  /**\\n   * @dev See {EntitiesRegistry._addDeposit}.\\n   */\\n  function addDeposit(bytes32 _id, uint256 _value) external;\\n\\n  /**\\n   * @dev Makes deposit of `asset` tokens with permit\\n   * @param _id The entity Id\\n   * @param _value Amount of `asset` tokens that must be deposited\\n   * @param _deadline Deadline time of permit\\n   * @param _sign Permit signature (EIP712)\\n   *\\n   * If `_sign` argument is provided the function will use the `permit` function\\n   * to transfer tokens from the sender to the contract, overwise the usual\\n   * `transferFrom` will be used.\\n   *\\n   * If the tokens transfer is succeeded:\\n   * - the function emits `Deposit(bytes32 id, address sender, uint256 value)` event\\n   *\\n   * Requirements:\\n   *\\n   * - can be called by the entity owner only\\n   */\\n  function addDeposit(\\n    bytes32 _id,\\n    uint256 _value,\\n    uint256 _deadline,\\n    bytes memory _sign\\n  ) external;\\n\\n  /**\\n   * @dev Makes deposit withdrawal of the entity\\n   * @param _id The entity Id\\n   * @param _value Amount of `asset` tokens that must be withdrawn\\n   *\\n   * If the tokens withdrawal is succeeded:\\n   * - the function emits `Withdraw(bytes32 id, address sender, uint256 value)` event\\n   *\\n   * Requirements:\\n   *\\n   * - can be called by the entity owner only\\n   */\\n  function withdrawDeposit(bytes32 _id, uint256 _value) external;\\n}\\n\",\"keccak256\":\"0x3f48925046ed3c45e1bd041ddf7c64bcebbb82ef30dc88532ea4c136265a30b8\",\"license\":\"MIT\"},\"contracts/libraries/SignatureUtils.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.19;\\n\\nlibrary SignatureUtils {\\n  error InvalidSignature();\\n\\n  /// @dev Splits signature into v/r/s form\\n  function split(\\n    bytes memory signature\\n  ) internal pure returns (uint8 v, bytes32 r, bytes32 s) {\\n    if (signature.length == 65) {\\n      assembly {\\n        r := mload(add(signature, 0x20))\\n        s := mload(add(signature, 0x40))\\n        v := byte(0, mload(add(signature, 0x60)))\\n\\n        if eq(v, 0) {\\n          v := 27\\n        }\\n\\n        if eq(v, 1) {\\n          v := 28\\n        }\\n      }\\n    } else {\\n      revert InvalidSignature();\\n    }\\n  }\\n}\\n\",\"keccak256\":\"0xb20f713cacd073216c4a1be4af5649de3eabdcb46cffcaf2b60c59b58ae10e1f\",\"license\":\"MIT\"},\"contracts/utils/IERC20.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.19;\\n\\n/// @dev Simple ERC20 token interface\\ninterface IERC20 {\\n  function decimals() external view returns (uint256);\\n\\n  function transfer(address, uint256) external returns (bool);\\n\\n  function transferFrom(address, address, uint256) external returns (bool);\\n\\n  function permit(\\n    address owner,\\n    address spender,\\n    uint256 value,\\n    uint256 deadline,\\n    uint8 v,\\n    bytes32 r,\\n    bytes32 s\\n  ) external;\\n}\\n\",\"keccak256\":\"0x1ad28279394506573ea860d0d680098c6716a0874ad0ec0475fec44b4f4d3d0f\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x608060405234801561001057600080fd5b50611667806100206000396000f3fe608060405234801561001057600080fd5b50600436106101165760003560e01c806370528312116100a25780638da5cb5b116100715780638da5cb5b14610260578063a241f54d14610271578063d42190c414610284578063ee8a116814610297578063f2fde38b146102b857600080fd5b80637052831214610212578063715018a61461022557806379502c551461022d5780638456cb591461025857600080fd5b8063485cc955116100e9578063485cc9551461015e57806353b66f36146101715780635c975abb146101d55780635cd2256a146101ec5780636e700a7f146101ff57600080fd5b806315d7bf441461011b57806320e3dbd414610130578063254352da146101435780633f4ba83a14610156575b600080fd5b61012e610129366004611378565b6102cb565b005b61012e61013e3660046113b1565b6104b4565b61012e6101513660046113d5565b610525565b61012e610754565b61012e61016c3660046113f7565b610766565b61018461017f366004611430565b6108a2565b604080518251815260208084015190820152828201516001600160a01b03908116928201929092526060808401511515908201526080928301519091169181019190915260a0015b60405180910390f35b60335460ff165b60405190151581526020016101cc565b61012e6101fa366004611430565b61096d565b61012e61020d3660046113d5565b610a65565b61012e610220366004611449565b610acb565b61012e610bc3565b609754610240906001600160a01b031681565b6040516001600160a01b0390911681526020016101cc565b61012e610bd5565b6065546001600160a01b0316610240565b6101dc61027f366004611430565b610be5565b61012e610292366004611484565b610c5e565b6102aa6102a5366004611430565b610cb6565b6040519081526020016101cc565b61012e6102c63660046113b1565b610d07565b6102d3610d80565b6097546040516373ba10af60e01b8152600481018590526001600160a01b03909116906373ba10af90602401602060405180830381865afa15801561031c573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906103409190611552565b600003610360576040516302b79ed360e41b815260040160405180910390fd5b6000336040516bffffffffffffffffffffffff19606083901b16602082015260348101859052909150600090605401604051602081830303815290604052805190602001209050806098600083815260200190815260200160002060010154036103dd57604051637021226b60e01b815260040160405180910390fd5b6040805160a08101825286815260208082018481526001600160a01b038681168486018181526000606087018181528b8516608089019081528a835260988852918990209751885594516001880155905160028701805495519185166001600160a81b031990961695909517600160a01b91151591909102179093559151600390940180546001600160a01b0319169490911693909317909255825191825281018390527f18c9d97edfcf27865aca8a4f478a1b4429b4c82fb5ded476e9f317f74573d01b91015b60405180910390a15050505050565b6104bc610dc6565b609754604080516001600160a01b03928316815291831660208301527fbd7986d31c086d8cc2901a1c41d1edc0af6e8a7a5c6fc1b8283919c1b2122c38910160405180910390a1609780546001600160a01b0319166001600160a01b0392909216919091179055565b600082815260986020526040902060028101548391906001600160a01b03166105615760405163102f403f60e31b815260040160405180910390fd5b60008481526098602052604090206002015484906001600160a01b0316331461059d5760405163fef2862960e01b815260040160405180910390fd5b6105a5610d80565b6000858152609960205260409020548411156105d457604051632923ca2760e01b815260040160405180910390fd5b6097546040516321f8a72160e01b815264185cdcd95d60da1b60048201526001600160a01b03909116906321f8a72190602401602060405180830381865afa158015610624573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610648919061156b565b6001600160a01b031663a9059cbb336040516001600160e01b031960e084901b1681526001600160a01b039091166004820152602481018790526044016020604051808303816000875af11580156106a4573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906106c89190611588565b6106e557604051634a7c573160e11b815260040160405180910390fd5b6000858152609960205260409020546106fe9085610e20565b6000868152609960205260409020557fe7284ffe0c70ad2f3b0aa15cde1cfe95f736935651a138725b21fd168edc5d6a8533604080519283526001600160a01b03909116602083015281018690526060016104a5565b61075c610dc6565b610764610e35565b565b600054610100900460ff16158080156107865750600054600160ff909116105b806107a05750303b1580156107a0575060005460ff166001145b6108085760405162461bcd60e51b815260206004820152602e60248201527f496e697469616c697a61626c653a20636f6e747261637420697320616c72656160448201526d191e481a5b9a5d1a585b1a5e995960921b60648201526084015b60405180910390fd5b6000805460ff19166001179055801561082b576000805461ff0019166101001790555b61083483610e87565b61083c610ed9565b609780546001600160a01b0319166001600160a01b038416179055801561089d576000805461ff0019169055604051600181527f7f26b83ff96e1f2b6a682f133852f6798a09c465da95921460cefb38474024989060200160405180910390a15b505050565b6040805160a081018252600080825260208201819052918101829052606081018290526080810191909152600082815260986020526040902060028101548391906001600160a01b03166109095760405163102f403f60e31b815260040160405180910390fd5b505050600090815260986020908152604091829020825160a0810184528154815260018201549281019290925260028101546001600160a01b0380821694840194909452600160a01b900460ff161515606083015260030154909116608082015290565b600081815260986020526040902060028101548291906001600160a01b03166109a95760405163102f403f60e31b815260040160405180910390fd5b60008381526098602052604090206002015483906001600160a01b031633146109e55760405163fef2862960e01b815260040160405180910390fd5b6109ed610d80565b6000848152609860205260409020600201805460ff60a01b198116600160a01b9182900460ff1615918202179091557f5da14598ca13cc7fc9c5011c46e87f0b8256b30e053584c1f5cdb5bfb937815e8533604080519283526001600160a01b039091166020830152831515908201526060016104a5565b600082815260986020526040902060028101548391906001600160a01b0316610aa15760405163102f403f60e31b815260040160405180910390fd5b610aa9610d80565b610ac58484600060405180602001604052806000815250610f08565b50505050565b60008281526098602052604090206002015482906001600160a01b03163314610b075760405163fef2862960e01b815260040160405180910390fd5b610b0f610d80565b6001600160a01b038216610b3657604051632057875960e21b815260040160405180910390fd5b600083815260986020526040902060030180546001600160a01b038481166001600160a01b0319831617909255167f839b4e07b209133cbcd83de21d88f6ecfcf0572d98fdef635960862dda92ff6e84610b8d3390565b604080519283526001600160a01b039182166020840152818516908301528516606082015260800160405180910390a150505050565b610bcb610dc6565b6107646000610e87565b610bdd610dc6565b61076461123d565b600081815260986020526040812060028101548391906001600160a01b0316610c215760405163102f403f60e31b815260040160405180910390fd5b600084815260986020526040902060020154600160a01b900460ff168015610c56575060008481526099602052604090205415155b949350505050565b600084815260986020526040902060028101548591906001600160a01b0316610c9a5760405163102f403f60e31b815260040160405180910390fd5b610ca2610d80565b610cae86868686610f08565b505050505050565b600081815260986020526040812060028101548391906001600160a01b0316610cf25760405163102f403f60e31b815260040160405180910390fd5b50505060009081526099602052604090205490565b610d0f610dc6565b6001600160a01b038116610d745760405162461bcd60e51b815260206004820152602660248201527f4f776e61626c653a206e6577206f776e657220697320746865207a65726f206160448201526564647265737360d01b60648201526084016107ff565b610d7d81610e87565b50565b60335460ff16156107645760405162461bcd60e51b815260206004820152601060248201526f14185d5cd8589b194e881c185d5cd95960821b60448201526064016107ff565b6065546001600160a01b031633146107645760405162461bcd60e51b815260206004820181905260248201527f4f776e61626c653a2063616c6c6572206973206e6f7420746865206f776e657260448201526064016107ff565b6000610e2c82846115c0565b90505b92915050565b610e3d61127a565b6033805460ff191690557f5db9ee0a495bf2e6ff9c91a7834c1ba4fdd244a5e8aa4e537bd38aeae4b073aa335b6040516001600160a01b03909116815260200160405180910390a1565b606580546001600160a01b038381166001600160a01b0319831681179093556040519116919082907f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e090600090a35050565b600054610100900460ff16610f005760405162461bcd60e51b81526004016107ff906115d3565b6107646112c3565b60008481526098602052604090206002015484906001600160a01b03163314610f445760405163fef2862960e01b815260040160405180910390fd5b609754600086815260986020526040908190205490516373ba10af60e01b81526001600160a01b03909216916373ba10af91610f869160040190815260200190565b602060405180830381865afa158015610fa3573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610fc79190611552565b600086815260996020526040902054610fe090866112f6565b1015610fff57604051636ba4a1c760e01b815260040160405180910390fd5b6000336097546040516321f8a72160e01b815264185cdcd95d60da1b60048201529192506000916001600160a01b03909116906321f8a72190602401602060405180830381865afa158015611058573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061107c919061156b565b84519091501561112757600080600061109487611302565b60405163d505accf60e01b81526001600160a01b038981166004830152306024830152604482018e9052606482018d905260ff8516608483015260a4820184905260c4820183905293965091945092509085169063d505accf9060e401600060405180830381600087803b15801561110b57600080fd5b505af115801561111f573d6000803e3d6000fd5b505050505050505b6040516323b872dd60e01b81526001600160a01b038381166004830152306024830152604482018890528216906323b872dd906064016020604051808303816000875af115801561117c573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906111a09190611588565b6111bd57604051634a7c573160e11b815260040160405180910390fd5b6000878152609960205260409020546111d690876112f6565b6000888152609960209081526040918290209290925580518981526001600160a01b0385169281019290925281018790527f182fa52899142d44ff5c45a6354d3b3e868d5b07db6a65580b39bd321bdaf8ac9060600160405180910390a150505050505050565b611245610d80565b6033805460ff191660011790557f62e78cea01bee320cd4e420270b5ea74000d11b0c9f74754ebdbfc544b05a258610e6a3390565b60335460ff166107645760405162461bcd60e51b815260206004820152601460248201527314185d5cd8589b194e881b9bdd081c185d5cd95960621b60448201526064016107ff565b600054610100900460ff166112ea5760405162461bcd60e51b81526004016107ff906115d3565b6033805460ff19169055565b6000610e2c828461161e565b600080600083516041036113435750505060208101516040820151606083015160001a91908261133157601b92505b6001830361133e57601c92505b61135c565b604051638baa579f60e01b815260040160405180910390fd5b9193909250565b6001600160a01b0381168114610d7d57600080fd5b60008060006060848603121561138d57600080fd5b833592506020840135915060408401356113a681611363565b809150509250925092565b6000602082840312156113c357600080fd5b81356113ce81611363565b9392505050565b600080604083850312156113e857600080fd5b50508035926020909101359150565b6000806040838503121561140a57600080fd5b823561141581611363565b9150602083013561142581611363565b809150509250929050565b60006020828403121561144257600080fd5b5035919050565b6000806040838503121561145c57600080fd5b82359150602083013561142581611363565b634e487b7160e01b600052604160045260246000fd5b6000806000806080858703121561149a57600080fd5b843593506020850135925060408501359150606085013567ffffffffffffffff808211156114c757600080fd5b818701915087601f8301126114db57600080fd5b8135818111156114ed576114ed61146e565b604051601f8201601f19908116603f011681019083821181831017156115155761151561146e565b816040528281528a602084870101111561152e57600080fd5b82602086016020830137600060208483010152809550505050505092959194509250565b60006020828403121561156457600080fd5b5051919050565b60006020828403121561157d57600080fd5b81516113ce81611363565b60006020828403121561159a57600080fd5b815180151581146113ce57600080fd5b634e487b7160e01b600052601160045260246000fd5b81810381811115610e2f57610e2f6115aa565b6020808252602b908201527f496e697469616c697a61626c653a20636f6e7472616374206973206e6f74206960408201526a6e697469616c697a696e6760a81b606082015260800190565b80820180821115610e2f57610e2f6115aa56fea26469706673582212203a601144e1bf228dcbda5d1b8b34aa3011e057c94f4afd103456ac87291bbf9264736f6c63430008130033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b50600436106101165760003560e01c806370528312116100a25780638da5cb5b116100715780638da5cb5b14610260578063a241f54d14610271578063d42190c414610284578063ee8a116814610297578063f2fde38b146102b857600080fd5b80637052831214610212578063715018a61461022557806379502c551461022d5780638456cb591461025857600080fd5b8063485cc955116100e9578063485cc9551461015e57806353b66f36146101715780635c975abb146101d55780635cd2256a146101ec5780636e700a7f146101ff57600080fd5b806315d7bf441461011b57806320e3dbd414610130578063254352da146101435780633f4ba83a14610156575b600080fd5b61012e610129366004611378565b6102cb565b005b61012e61013e3660046113b1565b6104b4565b61012e6101513660046113d5565b610525565b61012e610754565b61012e61016c3660046113f7565b610766565b61018461017f366004611430565b6108a2565b604080518251815260208084015190820152828201516001600160a01b03908116928201929092526060808401511515908201526080928301519091169181019190915260a0015b60405180910390f35b60335460ff165b60405190151581526020016101cc565b61012e6101fa366004611430565b61096d565b61012e61020d3660046113d5565b610a65565b61012e610220366004611449565b610acb565b61012e610bc3565b609754610240906001600160a01b031681565b6040516001600160a01b0390911681526020016101cc565b61012e610bd5565b6065546001600160a01b0316610240565b6101dc61027f366004611430565b610be5565b61012e610292366004611484565b610c5e565b6102aa6102a5366004611430565b610cb6565b6040519081526020016101cc565b61012e6102c63660046113b1565b610d07565b6102d3610d80565b6097546040516373ba10af60e01b8152600481018590526001600160a01b03909116906373ba10af90602401602060405180830381865afa15801561031c573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906103409190611552565b600003610360576040516302b79ed360e41b815260040160405180910390fd5b6000336040516bffffffffffffffffffffffff19606083901b16602082015260348101859052909150600090605401604051602081830303815290604052805190602001209050806098600083815260200190815260200160002060010154036103dd57604051637021226b60e01b815260040160405180910390fd5b6040805160a08101825286815260208082018481526001600160a01b038681168486018181526000606087018181528b8516608089019081528a835260988852918990209751885594516001880155905160028701805495519185166001600160a81b031990961695909517600160a01b91151591909102179093559151600390940180546001600160a01b0319169490911693909317909255825191825281018390527f18c9d97edfcf27865aca8a4f478a1b4429b4c82fb5ded476e9f317f74573d01b91015b60405180910390a15050505050565b6104bc610dc6565b609754604080516001600160a01b03928316815291831660208301527fbd7986d31c086d8cc2901a1c41d1edc0af6e8a7a5c6fc1b8283919c1b2122c38910160405180910390a1609780546001600160a01b0319166001600160a01b0392909216919091179055565b600082815260986020526040902060028101548391906001600160a01b03166105615760405163102f403f60e31b815260040160405180910390fd5b60008481526098602052604090206002015484906001600160a01b0316331461059d5760405163fef2862960e01b815260040160405180910390fd5b6105a5610d80565b6000858152609960205260409020548411156105d457604051632923ca2760e01b815260040160405180910390fd5b6097546040516321f8a72160e01b815264185cdcd95d60da1b60048201526001600160a01b03909116906321f8a72190602401602060405180830381865afa158015610624573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610648919061156b565b6001600160a01b031663a9059cbb336040516001600160e01b031960e084901b1681526001600160a01b039091166004820152602481018790526044016020604051808303816000875af11580156106a4573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906106c89190611588565b6106e557604051634a7c573160e11b815260040160405180910390fd5b6000858152609960205260409020546106fe9085610e20565b6000868152609960205260409020557fe7284ffe0c70ad2f3b0aa15cde1cfe95f736935651a138725b21fd168edc5d6a8533604080519283526001600160a01b03909116602083015281018690526060016104a5565b61075c610dc6565b610764610e35565b565b600054610100900460ff16158080156107865750600054600160ff909116105b806107a05750303b1580156107a0575060005460ff166001145b6108085760405162461bcd60e51b815260206004820152602e60248201527f496e697469616c697a61626c653a20636f6e747261637420697320616c72656160448201526d191e481a5b9a5d1a585b1a5e995960921b60648201526084015b60405180910390fd5b6000805460ff19166001179055801561082b576000805461ff0019166101001790555b61083483610e87565b61083c610ed9565b609780546001600160a01b0319166001600160a01b038416179055801561089d576000805461ff0019169055604051600181527f7f26b83ff96e1f2b6a682f133852f6798a09c465da95921460cefb38474024989060200160405180910390a15b505050565b6040805160a081018252600080825260208201819052918101829052606081018290526080810191909152600082815260986020526040902060028101548391906001600160a01b03166109095760405163102f403f60e31b815260040160405180910390fd5b505050600090815260986020908152604091829020825160a0810184528154815260018201549281019290925260028101546001600160a01b0380821694840194909452600160a01b900460ff161515606083015260030154909116608082015290565b600081815260986020526040902060028101548291906001600160a01b03166109a95760405163102f403f60e31b815260040160405180910390fd5b60008381526098602052604090206002015483906001600160a01b031633146109e55760405163fef2862960e01b815260040160405180910390fd5b6109ed610d80565b6000848152609860205260409020600201805460ff60a01b198116600160a01b9182900460ff1615918202179091557f5da14598ca13cc7fc9c5011c46e87f0b8256b30e053584c1f5cdb5bfb937815e8533604080519283526001600160a01b039091166020830152831515908201526060016104a5565b600082815260986020526040902060028101548391906001600160a01b0316610aa15760405163102f403f60e31b815260040160405180910390fd5b610aa9610d80565b610ac58484600060405180602001604052806000815250610f08565b50505050565b60008281526098602052604090206002015482906001600160a01b03163314610b075760405163fef2862960e01b815260040160405180910390fd5b610b0f610d80565b6001600160a01b038216610b3657604051632057875960e21b815260040160405180910390fd5b600083815260986020526040902060030180546001600160a01b038481166001600160a01b0319831617909255167f839b4e07b209133cbcd83de21d88f6ecfcf0572d98fdef635960862dda92ff6e84610b8d3390565b604080519283526001600160a01b039182166020840152818516908301528516606082015260800160405180910390a150505050565b610bcb610dc6565b6107646000610e87565b610bdd610dc6565b61076461123d565b600081815260986020526040812060028101548391906001600160a01b0316610c215760405163102f403f60e31b815260040160405180910390fd5b600084815260986020526040902060020154600160a01b900460ff168015610c56575060008481526099602052604090205415155b949350505050565b600084815260986020526040902060028101548591906001600160a01b0316610c9a5760405163102f403f60e31b815260040160405180910390fd5b610ca2610d80565b610cae86868686610f08565b505050505050565b600081815260986020526040812060028101548391906001600160a01b0316610cf25760405163102f403f60e31b815260040160405180910390fd5b50505060009081526099602052604090205490565b610d0f610dc6565b6001600160a01b038116610d745760405162461bcd60e51b815260206004820152602660248201527f4f776e61626c653a206e6577206f776e657220697320746865207a65726f206160448201526564647265737360d01b60648201526084016107ff565b610d7d81610e87565b50565b60335460ff16156107645760405162461bcd60e51b815260206004820152601060248201526f14185d5cd8589b194e881c185d5cd95960821b60448201526064016107ff565b6065546001600160a01b031633146107645760405162461bcd60e51b815260206004820181905260248201527f4f776e61626c653a2063616c6c6572206973206e6f7420746865206f776e657260448201526064016107ff565b6000610e2c82846115c0565b90505b92915050565b610e3d61127a565b6033805460ff191690557f5db9ee0a495bf2e6ff9c91a7834c1ba4fdd244a5e8aa4e537bd38aeae4b073aa335b6040516001600160a01b03909116815260200160405180910390a1565b606580546001600160a01b038381166001600160a01b0319831681179093556040519116919082907f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e090600090a35050565b600054610100900460ff16610f005760405162461bcd60e51b81526004016107ff906115d3565b6107646112c3565b60008481526098602052604090206002015484906001600160a01b03163314610f445760405163fef2862960e01b815260040160405180910390fd5b609754600086815260986020526040908190205490516373ba10af60e01b81526001600160a01b03909216916373ba10af91610f869160040190815260200190565b602060405180830381865afa158015610fa3573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610fc79190611552565b600086815260996020526040902054610fe090866112f6565b1015610fff57604051636ba4a1c760e01b815260040160405180910390fd5b6000336097546040516321f8a72160e01b815264185cdcd95d60da1b60048201529192506000916001600160a01b03909116906321f8a72190602401602060405180830381865afa158015611058573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061107c919061156b565b84519091501561112757600080600061109487611302565b60405163d505accf60e01b81526001600160a01b038981166004830152306024830152604482018e9052606482018d905260ff8516608483015260a4820184905260c4820183905293965091945092509085169063d505accf9060e401600060405180830381600087803b15801561110b57600080fd5b505af115801561111f573d6000803e3d6000fd5b505050505050505b6040516323b872dd60e01b81526001600160a01b038381166004830152306024830152604482018890528216906323b872dd906064016020604051808303816000875af115801561117c573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906111a09190611588565b6111bd57604051634a7c573160e11b815260040160405180910390fd5b6000878152609960205260409020546111d690876112f6565b6000888152609960209081526040918290209290925580518981526001600160a01b0385169281019290925281018790527f182fa52899142d44ff5c45a6354d3b3e868d5b07db6a65580b39bd321bdaf8ac9060600160405180910390a150505050505050565b611245610d80565b6033805460ff191660011790557f62e78cea01bee320cd4e420270b5ea74000d11b0c9f74754ebdbfc544b05a258610e6a3390565b60335460ff166107645760405162461bcd60e51b815260206004820152601460248201527314185d5cd8589b194e881b9bdd081c185d5cd95960621b60448201526064016107ff565b600054610100900460ff166112ea5760405162461bcd60e51b81526004016107ff906115d3565b6033805460ff19169055565b6000610e2c828461161e565b600080600083516041036113435750505060208101516040820151606083015160001a91908261133157601b92505b6001830361133e57601c92505b61135c565b604051638baa579f60e01b815260040160405180910390fd5b9193909250565b6001600160a01b0381168114610d7d57600080fd5b60008060006060848603121561138d57600080fd5b833592506020840135915060408401356113a681611363565b809150509250925092565b6000602082840312156113c357600080fd5b81356113ce81611363565b9392505050565b600080604083850312156113e857600080fd5b50508035926020909101359150565b6000806040838503121561140a57600080fd5b823561141581611363565b9150602083013561142581611363565b809150509250929050565b60006020828403121561144257600080fd5b5035919050565b6000806040838503121561145c57600080fd5b82359150602083013561142581611363565b634e487b7160e01b600052604160045260246000fd5b6000806000806080858703121561149a57600080fd5b843593506020850135925060408501359150606085013567ffffffffffffffff808211156114c757600080fd5b818701915087601f8301126114db57600080fd5b8135818111156114ed576114ed61146e565b604051601f8201601f19908116603f011681019083821181831017156115155761151561146e565b816040528281528a602084870101111561152e57600080fd5b82602086016020830137600060208483010152809550505050505092959194509250565b60006020828403121561156457600080fd5b5051919050565b60006020828403121561157d57600080fd5b81516113ce81611363565b60006020828403121561159a57600080fd5b815180151581146113ce57600080fd5b634e487b7160e01b600052601160045260246000fd5b81810381811115610e2f57610e2f6115aa565b6020808252602b908201527f496e697469616c697a61626c653a20636f6e7472616374206973206e6f74206960408201526a6e697469616c697a696e6760a81b606082015260800190565b80820180821115610e2f57610e2f6115aa56fea26469706673582212203a601144e1bf228dcbda5d1b8b34aa3011e057c94f4afd103456ac87291bbf9264736f6c63430008130033",
+  "devdoc": {
+    "details": "A smart contract for registering and managing entities who can participate in the protocol.",
+    "errors": {
+      "DepositNotEnough()": [
+        {
+          "details": "Throws when the deposit withdrawal is not possible due to slack of funds"
+        }
+      ],
+      "DepositTooSmall()": [
+        {
+          "details": "Throws when the deposit value is less than the `minDeposit`"
+        }
+      ],
+      "DepositTransferFailed()": [
+        {
+          "details": "Throws when the deposit funds transfer is failed"
+        }
+      ],
+      "EntityExists()": [
+        {
+          "details": "Throws when sender attempts to register already existed entity"
+        }
+      ],
+      "EntityNotFound()": [
+        {
+          "details": "Throws when entity not found in the registry"
+        }
+      ],
+      "InvalidConfig()": [
+        {
+          "details": "Throws when sender attempts to provide invalid configuration"
+        }
+      ],
+      "InvalidKind()": [
+        {
+          "details": "Throws when sender attempts refer to non-registered entity type"
+        }
+      ],
+      "InvalidSigner()": [
+        {
+          "details": "Throws when sender attempts send invalid signer address"
+        }
+      ],
+      "NotEntityOwner()": [
+        {
+          "details": "Throws when sender not an owner of the entity"
+        }
+      ]
+    },
+    "events": {
+      "Deposit(bytes32,address,uint256)": {
+        "details": "Emitted when a entity makes a deposit"
+      },
+      "EntityRegistered(address,bytes32)": {
+        "details": "Emitted when a Entity is registered"
+      },
+      "Initialized(uint8)": {
+        "details": "Triggered when the contract has been initialized or reinitialized."
+      },
+      "Paused(address)": {
+        "details": "Emitted when the pause is triggered by `account`."
+      },
+      "SetConfig(address,address)": {
+        "details": "Emitted when updated an address of the protocol config contract"
+      },
+      "SignerChanged(bytes32,address,address,address)": {
+        "details": "Emitted when the entity's signer is changed"
+      },
+      "ToggleEnabled(bytes32,address,bool)": {
+        "details": "Emitted when a entity's enabled status is toggled"
+      },
+      "Unpaused(address)": {
+        "details": "Emitted when the pause is lifted by `account`."
+      },
+      "Withdraw(bytes32,address,uint256)": {
+        "details": "Emitted when a entity withdraws a deposit"
+      }
+    },
+    "kind": "dev",
+    "methods": {
+      "addDeposit(bytes32,uint256)": {
+        "details": "See {EntitiesRegistry._addDeposit}."
+      },
+      "addDeposit(bytes32,uint256,uint256,bytes)": {
+        "details": "Makes deposit of `asset` tokens with permit",
+        "params": {
+          "_deadline": "Deadline time of permit",
+          "_id": "The entity Id",
+          "_sign": "Permit signature (EIP712) If `_sign` argument is provided the function will use the `permit` function to transfer tokens from the sender to the contract, overwise the usual `transferFrom` will be used. If the tokens transfer is succeeded: - the function emits `Deposit(bytes32 id, address sender, uint256 value)` event Requirements: - can be called by the entity owner only",
+          "_value": "Amount of `asset` tokens that must be deposited"
+        }
+      },
+      "balanceOfEntity(bytes32)": {
+        "details": "Returns the value of the entity's deposit",
+        "params": {
+          "_id": "The entity Id"
+        }
+      },
+      "changeSigner(bytes32,address)": {
+        "details": "Changes signer account of the entity",
+        "params": {
+          "_id": "The entity Id",
+          "_signer": "Account authorized by the entity to sign offers If changing of the signer is succeeded: - the function emits `SignerChanged(bytes32 id, address sender, address oldSigner, address new Signer)` event Requirements: - can be called by the entity owner only"
+        }
+      },
+      "getEntity(bytes32)": {
+        "details": "Returns entity by Id",
+        "params": {
+          "_id": "The entity Id"
+        }
+      },
+      "initialize(address,address)": {
+        "details": "EntitiesRegistry initializer",
+        "params": {
+          "_config": "The protocol config contract address"
+        }
+      },
+      "isEntityEnabled(bytes32)": {
+        "details": "Returns the value of `enabled` entity status",
+        "params": {
+          "_id": "The entity Id"
+        }
+      },
+      "owner()": {
+        "details": "Returns the address of the current owner."
+      },
+      "pause()": {
+        "details": "Pauses the contract"
+      },
+      "paused()": {
+        "details": "Returns true if the contract is paused, and false otherwise."
+      },
+      "register(bytes32,bytes32,address)": {
+        "details": "Registers a new entity",
+        "params": {
+          "_kind": "Type of entity",
+          "_salt": "Unique bytes32 string that allows off-chain calculation of the entity Id",
+          "_signer": "Account address that authorized by the entity owner to sign offers If registering of the entity is succeeded: - the function emits `EntityRegistered(bytes32 id, bytes32 id)` event Requirements: - `salt` can be used only once. If a `salt` has been used and the entity is registered   the next attempt will results in the error `EntityExists()` - an entity type provided with `_kind` must be registered NOTE: When the entity is registered its initial `enabled` status is set to `false`. This means that to start accepting deals the entity must be enabled"
+        }
+      },
+      "renounceOwnership()": {
+        "details": "Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner."
+      },
+      "setConfig(address)": {
+        "details": "Sets the new address of the protocol config contract address"
+      },
+      "toggleEntity(bytes32)": {
+        "details": "Toggles an enabled status of the entity",
+        "params": {
+          "_id": "The entity Id This function inverts a value of the `enabled` parameter of the entity If toggling is succeeded: - the function emits `ToggleEnabled(bytes32 id, address sender, bool enabled)` event Requirements: - can be called by the entity owner only"
+        }
+      },
+      "transferOwnership(address)": {
+        "details": "Transfers ownership of the contract to a new account (`newOwner`). Can only be called by the current owner."
+      },
+      "unpause()": {
+        "details": "Unpauses the contract"
+      },
+      "withdrawDeposit(bytes32,uint256)": {
+        "details": "Makes deposit withdrawal of the entity",
+        "params": {
+          "_id": "The entity Id",
+          "_value": "Amount of `asset` tokens that must be withdrawn If the tokens withdrawal is succeeded: - the function emits `Withdraw(bytes32 id, address sender, uint256 value)` event Requirements: - can be called by the entity owner only"
+        }
+      }
+    },
+    "stateVariables": {
+      "config": {
+        "details": "The protocol config contract address"
+      },
+      "deposits": {
+        "details": "Mapping of a entity Id to deposit"
+      },
+      "entities": {
+        "details": "Mapping of a entity Id to Entity storage"
+      }
+    },
+    "title": "EntitiesRegistry",
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 152,
+        "contract": "contracts/EntitiesRegistry.sol:EntitiesRegistry",
+        "label": "_initialized",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_uint8"
+      },
+      {
+        "astId": 155,
+        "contract": "contracts/EntitiesRegistry.sol:EntitiesRegistry",
+        "label": "_initializing",
+        "offset": 1,
+        "slot": "0",
+        "type": "t_bool"
+      },
+      {
+        "astId": 3290,
+        "contract": "contracts/EntitiesRegistry.sol:EntitiesRegistry",
+        "label": "__gap",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_array(t_uint256)50_storage"
+      },
+      {
+        "astId": 335,
+        "contract": "contracts/EntitiesRegistry.sol:EntitiesRegistry",
+        "label": "_paused",
+        "offset": 0,
+        "slot": "51",
+        "type": "t_bool"
+      },
+      {
+        "astId": 440,
+        "contract": "contracts/EntitiesRegistry.sol:EntitiesRegistry",
+        "label": "__gap",
+        "offset": 0,
+        "slot": "52",
+        "type": "t_array(t_uint256)49_storage"
+      },
+      {
+        "astId": 10,
+        "contract": "contracts/EntitiesRegistry.sol:EntitiesRegistry",
+        "label": "_owner",
+        "offset": 0,
+        "slot": "101",
+        "type": "t_address"
+      },
+      {
+        "astId": 130,
+        "contract": "contracts/EntitiesRegistry.sol:EntitiesRegistry",
+        "label": "__gap",
+        "offset": 0,
+        "slot": "102",
+        "type": "t_array(t_uint256)49_storage"
+      },
+      {
+        "astId": 8127,
+        "contract": "contracts/EntitiesRegistry.sol:EntitiesRegistry",
+        "label": "config",
+        "offset": 0,
+        "slot": "151",
+        "type": "t_address"
+      },
+      {
+        "astId": 8133,
+        "contract": "contracts/EntitiesRegistry.sol:EntitiesRegistry",
+        "label": "entities",
+        "offset": 0,
+        "slot": "152",
+        "type": "t_mapping(t_bytes32,t_struct(Entity)9182_storage)"
+      },
+      {
+        "astId": 8138,
+        "contract": "contracts/EntitiesRegistry.sol:EntitiesRegistry",
+        "label": "deposits",
+        "offset": 0,
+        "slot": "153",
+        "type": "t_mapping(t_bytes32,t_uint256)"
+      },
+      {
+        "astId": 8762,
+        "contract": "contracts/EntitiesRegistry.sol:EntitiesRegistry",
+        "label": "__gap",
+        "offset": 0,
+        "slot": "154",
+        "type": "t_array(t_uint256)50_storage"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_array(t_uint256)49_storage": {
+        "base": "t_uint256",
+        "encoding": "inplace",
+        "label": "uint256[49]",
+        "numberOfBytes": "1568"
+      },
+      "t_array(t_uint256)50_storage": {
+        "base": "t_uint256",
+        "encoding": "inplace",
+        "label": "uint256[50]",
+        "numberOfBytes": "1600"
+      },
+      "t_bool": {
+        "encoding": "inplace",
+        "label": "bool",
+        "numberOfBytes": "1"
+      },
+      "t_bytes32": {
+        "encoding": "inplace",
+        "label": "bytes32",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_bytes32,t_struct(Entity)9182_storage)": {
+        "encoding": "mapping",
+        "key": "t_bytes32",
+        "label": "mapping(bytes32 => struct IEntitiesRegistry.Entity)",
+        "numberOfBytes": "32",
+        "value": "t_struct(Entity)9182_storage"
+      },
+      "t_mapping(t_bytes32,t_uint256)": {
+        "encoding": "mapping",
+        "key": "t_bytes32",
+        "label": "mapping(bytes32 => uint256)",
+        "numberOfBytes": "32",
+        "value": "t_uint256"
+      },
+      "t_struct(Entity)9182_storage": {
+        "encoding": "inplace",
+        "label": "struct IEntitiesRegistry.Entity",
+        "members": [
+          {
+            "astId": 9173,
+            "contract": "contracts/EntitiesRegistry.sol:EntitiesRegistry",
+            "label": "kind",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_bytes32"
+          },
+          {
+            "astId": 9175,
+            "contract": "contracts/EntitiesRegistry.sol:EntitiesRegistry",
+            "label": "id",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_bytes32"
+          },
+          {
+            "astId": 9177,
+            "contract": "contracts/EntitiesRegistry.sol:EntitiesRegistry",
+            "label": "owner",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_address"
+          },
+          {
+            "astId": 9179,
+            "contract": "contracts/EntitiesRegistry.sol:EntitiesRegistry",
+            "label": "enabled",
+            "offset": 20,
+            "slot": "2",
+            "type": "t_bool"
+          },
+          {
+            "astId": 9181,
+            "contract": "contracts/EntitiesRegistry.sol:EntitiesRegistry",
+            "label": "signer",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_address"
+          }
+        ],
+        "numberOfBytes": "128"
+      },
+      "t_uint256": {
+        "encoding": "inplace",
+        "label": "uint256",
+        "numberOfBytes": "32"
+      },
+      "t_uint8": {
+        "encoding": "inplace",
+        "label": "uint8",
+        "numberOfBytes": "1"
+      }
+    }
+  }
+}

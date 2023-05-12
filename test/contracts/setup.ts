@@ -1,11 +1,21 @@
-import { MockERC20Dec18, MockERC20Dec18Permit, Market } from '../../typechain';
+import { expect } from 'chai';
+import {
+  MockERC20Dec18,
+  MockERC20Dec18Permit,
+  Market,
+  Config,
+  EntitiesRegistry,
+} from '../../typechain';
 import { ethers, deployments, getNamedAccounts } from 'hardhat';
 import { BigNumber, Contract, VoidSigner } from 'ethers';
+import { protocolFee, retailerFee, minDeposit } from '../../src';
 import { structEqual, createSupplierId } from './utils';
 
 export interface Contracts {
   erc20: MockERC20Dec18;
   lif: MockERC20Dec18Permit;
+  config: Config;
+  entities: EntitiesRegistry;
   market: Market;
 }
 
@@ -15,13 +25,6 @@ export type User = {
 } & Contracts;
 
 export type Users = Record<string, User>;
-
-export const eip712name = 'Market';
-export const eip712version = '1';
-export const minDeposit = BigNumber.from('1000000000000000000000');
-export const claimPeriod = BigNumber.from('60');
-export const protocolFee = BigNumber.from('1');
-export const retailerFee = BigNumber.from('1');
 
 export const setupUser = async (
   address: string,
@@ -58,6 +61,8 @@ export const setup = deployments.createFixture(async () => {
   const contracts = {
     erc20: <MockERC20Dec18>await ethers.getContract('MockERC20Dec18'),
     lif: <MockERC20Dec18Permit>await ethers.getContract('MockERC20Dec18Permit'),
+    config: <Config>await ethers.getContract('Config'),
+    entities: <EntitiesRegistry>await ethers.getContract('EntitiesRegistry'),
     market: <Market>await ethers.getContract('Market'),
   };
 
@@ -69,28 +74,35 @@ export const setup = deployments.createFixture(async () => {
   };
 });
 
-export const registerSupplier = async (
-  market: Market,
-  supplierSalt: string,
-  supplierOwner: User,
-  supplierSigner: User,
+export const registerEntity = async (
+  owner: User,
+  signer: User,
+  kind: string,
+  salt: string,
   lif?: MockERC20Dec18Permit,
   enable = true,
 ) => {
-  await market.register(supplierSalt, supplierSigner.address);
-  const supplierId = createSupplierId(supplierOwner.address, supplierSalt);
-  structEqual(await market.suppliers(supplierId), {
-    id: supplierId,
-    owner: supplierOwner.address,
-    enabled: false,
-    signer: supplierSigner.address,
-  });
+  const supplierId = createSupplierId(owner.address, salt);
+  const tx = await owner.entities.register(kind, salt, signer.address);
+  await expect(tx)
+    .to.emit(owner.entities, 'EntityRegistered')
+    .withArgs(owner.address, supplierId);
+  structEqual(
+    await owner.entities.getEntity(supplierId),
+    {
+      id: supplierId,
+      owner: owner.address,
+      enabled: false,
+      signer: signer.address,
+    },
+    'Entity',
+  );
   if (lif) {
-    await lif.approve(market.address, minDeposit);
-    await market['addDeposit(bytes32,uint256)'](supplierId, minDeposit);
+    await lif.approve(owner.entities.address, minDeposit);
+    await owner.entities['addDeposit(bytes32,uint256)'](supplierId, minDeposit);
   }
   if (enable) {
-    await market.toggleSupplier(supplierId);
+    await owner.entities.toggleEntity(supplierId);
   }
 };
 

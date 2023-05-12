@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "./Configurable.sol";
-import "./SuppliersRegistry.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/SignatureCheckerUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "./interfaces/IEntitiesRegistry.sol";
+import "./interfaces/IConfig.sol";
+import "./libraries/Utils.sol";
+import "./libraries/SignatureUtils.sol";
 import "./utils/IERC20.sol";
-import "./utils/SignatureUtils.sol";
 
 /**
  * @title DealsRegistry
@@ -17,131 +19,34 @@ import "./utils/SignatureUtils.sol";
  * Each deal specifies the payment and cancellation terms, and can be tracked on-chain using its unique Id.
  */
 abstract contract DealsRegistry is
-  Configurable,
-  Pausable,
-  SuppliersRegistry,
-  EIP712
+  EIP712Upgradeable,
+  PausableUpgradeable,
+  OwnableUpgradeable
 {
-  using SignatureChecker for address;
+  using SignatureCheckerUpgradeable for address;
   using SignatureUtils for bytes;
-  using SafeMath for uint256;
+  using SafeMathUpgradeable for uint256;
 
-  bytes32 public constant PAYMENT_OPTION_TYPE_HASH =
-    keccak256("PaymentOption(bytes32 id,uint256 price,address asset)");
+  /// @dev The protocol config contract address
+  address public config;
 
-  bytes32 public constant CANCEL_OPTION_TYPE_HASH =
-    keccak256("CancelOption(uint256 time,uint256 penalty)");
-
-  bytes32 public constant OFFER_TYPE_HASH =
-    keccak256(
-      // solhint-disable-next-line max-line-length
-      "Offer(bytes32 id,uint256 expire,bytes32 supplierId,uint256 chainId,bytes32 requestHash,bytes32 optionsHash,bytes32 paymentHash,bytes32 cancelHash,bool transferable,uint256 checkIn)"
-    );
-
-  bytes32 public constant CHECK_IN_TYPE_HASH =
-    keccak256("Voucher(bytes32 id,address signer)");
-
-  /**
-   * @dev Payment option
-   * @param id Unique ID of the payment option
-   * @param price The price of the asset in wei
-   * @param asset The address of the ERC20 token used for payment
-   */
-  struct PaymentOption {
-    bytes32 id;
-    uint256 price;
-    address asset;
-  }
-
-  /**
-   * @dev Deal cancellation option
-   * @param time The number of seconds before checkIn
-   * @param penalty The percentage of the total sum to be paid as a penalty if the deal is cancelled
-   */
-  struct CancelOption {
-    uint256 time;
-    uint256 penalty;
-  }
-
-  /**
-   * @dev Offer payload
-   * @param id The unique ID of the offer
-   * @param expire The time when the offer expires (in seconds since the Unix epoch)
-   * @param supplierId The unique ID of the supplier offering the deal
-   * @param chainId The ID of the network chain where the deal is to be executed
-   * @param requestHash The hash of the request made by the buyer
-   * @param optionsHash The hash of the payment and cancellation options for the deal
-   * @param paymentHash The hash of the payment option used for the deal
-   * @param cancelHash The hash of the cancellation option used for the deal
-   * @param transferable Indicates whether the deal NFT is transferable or not
-   * @param checkIn The check-in time for the deal (in seconds since the Unix epoch)
-   * @param checkOut The check-out time for the deal (in seconds since the Unix epoch)
-   */
-  struct Offer {
-    bytes32 id;
-    uint256 expire;
-    bytes32 supplierId;
-    uint256 chainId;
-    bytes32 requestHash;
-    bytes32 optionsHash;
-    bytes32 paymentHash;
-    bytes32 cancelHash;
-    bool transferable;
-    uint256 checkIn;
-    uint256 checkOut;
-  }
-
-  /**
-   * @dev Deal status
-   */
-  enum DealStatus {
-    Created, // Just created
-    Claimed, // Claimed by the supplier
-    Rejected, // Rejected by the supplier
-    Refunded, // Refunded by the supplier
-    Cancelled, // Cancelled by the buyer
-    CheckedIn, // Checked In
-    CheckedOut, // Checked Out
-    Disputed // Dispute started
-  }
-
-  /**
-   * @dev Deal storage struct
-   * @param offer Offer payload
-   * @param price Deal price
-   * @param asset Deal asset
-   * @param status Current deal status
-   */
-  struct Deal {
-    uint256 created;
-    Offer offer;
-    bytes32 retailerId;
-    address buyer;
-    uint256 price;
-    address asset;
-    DealStatus status;
-  }
+  /// @dev Entities registry contract address
+  address public entities;
 
   /// @dev Mapping of context to allowed statuses list
-  mapping(bytes32 => DealStatus[]) private allowedStatuses;
+  mapping(bytes32 => Utils.DealStatus[]) private allowedStatuses;
 
   /// @dev Mapping of an offer Id on a Deal
-  mapping(bytes32 => Deal) public deals;
+  mapping(bytes32 => Utils.Deal) public deals;
 
-  /**
-   * @dev Emitted when a Deal status is updated
-   * @param offerId The Id of the offer used to create the deal
-   * @param status The deal status
-   * @param sender The address of the user who is updated the status of the deal
-   */
-  event Status(
-    bytes32 indexed offerId,
-    DealStatus status,
-    address indexed sender
-  );
+  /// @dev Emitted when a Deal status is updated
+  event Status(bytes32 offerId, Utils.DealStatus status, address sender);
 
-  /// @dev Thrown when a user attempts to provide an invalid config property value
-  error InvalidConfig();
+  /// @dev Emitted when updated an address of the protocol config contract
+  event SetConfig(address oldAddress, address newAddress);
+
+  /// @dev Emitted when updated an address of the Entities registry contract
+  event SetEntities(address oldAddress, address newAddress);
 
   /// @dev Thrown when a user attempts to create a deal using an offer with an invalid signature
   error InvalidOfferSignature();
@@ -164,9 +69,6 @@ abstract contract DealsRegistry is
   /// @dev Thrown when a Deal funds transfer is failed
   error DealFundsTransferFailed();
 
-  /// @dev Thrown when the supplier of the offer is not found
-  error InvalidSupplier();
-
   /// @dev Thrown when the retailer of the offer is not found
   error InvalidRetailer();
 
@@ -188,57 +90,45 @@ abstract contract DealsRegistry is
   /// @dev Thrown when a user attempts to cancel the deal using invalid cancellation options
   error InvalidCancelOptions();
 
-  /// @dev Thrown when percents value greater than 100
-  error InvalidPercent();
-
   /**
-   * @dev DealsRegistry constructor
+   * @dev DealsRegistry initializer
    * @param _name The name of the contract
    * @param _version The version of the contract
-   * @param _claimPeriod The default time period, in seconds, allowed for the supplier to claim the deal.
-   * @param _protocolFee Protocol's fee in percents
-   * @param _retailerFee Retailer's fee in percents
-   * @param _feeRecipient he recipient of the protocol fee
-   * @param _asset The address of the asset
-   * @param _minDeposit The minimum deposit required for the contract
+   * @param _config The protocol config contract address
+   * @param _entities Entities registry contract address
    */
-  constructor(
+  function __DealsRegistry_init(
     string memory _name,
     string memory _version,
-    uint256 _claimPeriod,
-    uint256 _protocolFee,
-    uint256 _retailerFee,
-    address _feeRecipient,
-    address _asset,
-    uint256 _minDeposit
-  ) EIP712(_name, _version) SuppliersRegistry(_asset, _minDeposit) {
-    // The default time period, in seconds, allowed for the supplier to claim the deal.
-    // The buyer is not able to cancel the deal during this period
-    config("claim_period", _claimPeriod);
+    address _config,
+    address _entities
+  ) internal onlyInitializing {
+    __EIP712_init(_name, _version);
+    __Pausable_init();
 
-    // The recipient of the protocol fee
-    config("fee_recipient", _feeRecipient);
+    // Save the protocol config contract address
+    config = _config;
 
-    // In total, all the fees must not be greater than 100.
-    // Of course, having 100% of the fees is absurd case.
-    if (_protocolFee.add(_retailerFee) > 100) {
-      revert InvalidConfig();
-    }
-
-    // Protocol's fee in percents
-    config("protocol_fee", _protocolFee);
-
-    // Retailer's fee in percents
-    config("retailer_fee", _retailerFee);
+    // Save entities registry address
+    entities = _entities;
 
     // Allowed statuses for functions execution
-    allowedStatuses["reject"] = [DealStatus.Created];
-    allowedStatuses["cancel"] = [DealStatus.Created, DealStatus.Claimed];
-    allowedStatuses["refund"] = [DealStatus.Claimed, DealStatus.CheckedIn];
-    allowedStatuses["claim"] = [DealStatus.Created];
-    allowedStatuses["checkIn"] = [DealStatus.Claimed];
-    allowedStatuses["checkOut"] = [DealStatus.CheckedIn];
-    allowedStatuses["dispute"] = [DealStatus.CheckedIn, DealStatus.CheckedOut];
+    allowedStatuses["reject"] = [Utils.DealStatus.Created];
+    allowedStatuses["cancel"] = [
+      Utils.DealStatus.Created,
+      Utils.DealStatus.Claimed
+    ];
+    allowedStatuses["refund"] = [
+      Utils.DealStatus.Claimed,
+      Utils.DealStatus.CheckedIn
+    ];
+    allowedStatuses["claim"] = [Utils.DealStatus.Created];
+    allowedStatuses["checkIn"] = [Utils.DealStatus.Claimed];
+    allowedStatuses["checkOut"] = [Utils.DealStatus.CheckedIn];
+    allowedStatuses["dispute"] = [
+      Utils.DealStatus.CheckedIn,
+      Utils.DealStatus.CheckedOut
+    ];
   }
 
   /// Modifiers
@@ -265,9 +155,9 @@ abstract contract DealsRegistry is
    * - the deal of the `offerId` must exists
    * - the deal is in `statuses`
    */
-  modifier inStatuses(bytes32 offerId, DealStatus[] memory statuses) {
+  modifier inStatuses(bytes32 offerId, Utils.DealStatus[] memory statuses) {
     uint256 allowed;
-    DealStatus currentStatus = deals[offerId].status;
+    Utils.DealStatus currentStatus = deals[offerId].status;
 
     for (uint256 i = 0; i < statuses.length; i++) {
       if (currentStatus == statuses[i]) {
@@ -290,7 +180,12 @@ abstract contract DealsRegistry is
    * - the function called by the supplier's signer
    */
   modifier onlySigner(bytes32 offerId) {
-    if (_msgSender() != suppliers[deals[offerId].offer.supplierId].signer) {
+    if (
+      _msgSender() !=
+      IEntitiesRegistry(entities)
+        .getEntity(deals[offerId].offer.supplierId)
+        .signer
+    ) {
       revert NotAllowedAuth();
     }
     _;
@@ -298,97 +193,22 @@ abstract contract DealsRegistry is
 
   /// Utilities
 
-  /// @dev Create a has of bytes32 array
-  function hash(bytes32[] memory _hashes) internal pure returns (bytes32) {
-    return keccak256(abi.encodePacked(_hashes));
+  /**
+   * @dev Sets the new address of the protocol config contract address
+   * @param _config The new protocol config contract address
+   */
+  function setConfig(address _config) external onlyOwner {
+    emit SetConfig(config, _config);
+    config = _config;
   }
 
-  /// @dev Creates a hash of a PaymentOption
-  function hash(
-    PaymentOption memory _paymentOptions
-  ) internal pure returns (bytes32) {
-    return
-      keccak256(
-        abi.encodePacked(
-          PAYMENT_OPTION_TYPE_HASH,
-          _paymentOptions.id,
-          _paymentOptions.price,
-          _paymentOptions.asset
-        )
-      );
-  }
-
-  /// @dev Creates a hash of a CancelOption
-  function hash(CancelOption memory _cancel) internal pure returns (bytes32) {
-    return
-      keccak256(
-        abi.encodePacked(CANCEL_OPTION_TYPE_HASH, _cancel.time, _cancel.penalty)
-      );
-  }
-
-  /// @dev Creates a hash of an array of PaymentOption
-  function hash(
-    PaymentOption[] memory _paymentOptions
-  ) internal pure returns (bytes32) {
-    bytes32[] memory hashes = new bytes32[](_paymentOptions.length);
-
-    for (uint256 i = 0; i < _paymentOptions.length; i++) {
-      hashes[i] = hash(_paymentOptions[i]);
-    }
-
-    return hash(hashes);
-  }
-
-  /// @dev Creates a hash of an array of CancelOption
-  function hash(
-    CancelOption[] memory _cancelOptions
-  ) internal pure returns (bytes32) {
-    bytes32[] memory hashes = new bytes32[](_cancelOptions.length);
-
-    for (uint256 i = 0; i < _cancelOptions.length; i++) {
-      hashes[i] = hash(_cancelOptions[i]);
-    }
-
-    return hash(hashes);
-  }
-
-  /// @dev Creates a hash of an Offer
-  function hash(Offer memory _offer) internal pure returns (bytes32) {
-    return
-      keccak256(
-        abi.encode(
-          OFFER_TYPE_HASH,
-          _offer.id,
-          _offer.expire,
-          _offer.supplierId,
-          _offer.chainId,
-          _offer.requestHash,
-          _offer.optionsHash,
-          _offer.paymentHash,
-          _offer.cancelHash,
-          _offer.transferable,
-          _offer.checkIn
-        )
-      );
-  }
-
-  /// @dev Create a hash of check-in data
-  function hashCheckInOut(
-    bytes32 _id,
-    address _signer
-  ) internal pure returns (bytes32) {
-    return keccak256(abi.encode(CHECK_IN_TYPE_HASH, _id, _signer));
-  }
-
-  /// @dev Calculates percentage value
-  function _percentage(
-    uint256 value,
-    uint256 percent
-  ) internal pure returns (uint256) {
-    if (percent > 100) {
-      revert InvalidPercent();
-    }
-    return value.mul(1000).mul(percent).div(100).div(1000);
+  /**
+   * @dev Sets the new address of the entities registry
+   * @param _entities The new protocol config contract address
+   */
+  function setEntities(address _entities) external onlyOwner {
+    emit SetEntities(entities, _entities);
+    entities = _entities;
   }
 
   /// Workflow hooks
@@ -402,7 +222,7 @@ abstract contract DealsRegistry is
    * @param signs An array of signatures authorizing the creation of the deal
    */
   function _beforeCreate(
-    Offer memory offer,
+    Utils.Offer memory offer,
     uint256 price,
     address asset,
     bytes[] memory signs
@@ -417,7 +237,7 @@ abstract contract DealsRegistry is
    * @param signs An array of signatures authorizing the creation of the deal
    */
   function _afterCreate(
-    Offer memory offer,
+    Utils.Offer memory offer,
     uint256 price,
     address asset,
     bytes[] memory signs
@@ -548,8 +368,8 @@ abstract contract DealsRegistry is
    * NOTE: `permit` signature can be ECDSA of type only
    */
   function deal(
-    Offer memory offer,
-    PaymentOption[] memory paymentOptions,
+    Utils.Offer memory offer,
+    Utils.PaymentOption[] memory paymentOptions,
     bytes32 paymentId,
     bytes32 retailerId,
     bytes[] memory signs
@@ -559,13 +379,9 @@ abstract contract DealsRegistry is
     /// @dev variable scoping used to avoid stack too deep errors
     /// The `supplier` storage variable is required is the frame of this scope only
     {
-      bytes32 offerHash = _hashTypedDataV4(hash(offer));
-      Supplier storage supplier = suppliers[offer.supplierId];
-
-      // Supplier who created an offer must be registered
-      if (supplier.signer == address(0)) {
-        revert InvalidSupplier();
-      }
+      bytes32 offerHash = _hashTypedDataV4(Utils.hash(offer));
+      IEntitiesRegistry.Entity memory supplier = IEntitiesRegistry(entities)
+        .getEntity(offer.supplierId);
 
       // Checking ECDSA/AA signature is valid
       if (!supplier.signer.isValidSignatureNow(offerHash, signs[0])) {
@@ -574,13 +390,14 @@ abstract contract DealsRegistry is
 
       // Not-enabled suppliers are not allowed to accept deals
       // So, we cannot allow to create such a deal
-      if (!supplier.enabled || deposits[offer.supplierId] == 0) {
+      if (!IEntitiesRegistry(entities).isEntityEnabled(offer.supplierId)) {
         revert DisabledSupplier();
       }
 
       // The retailer is optional, so we validate its rules only if retailerId is defined
       if (retailerId != bytes32(0)) {
-        Supplier storage retailer = suppliers[retailerId];
+        IEntitiesRegistry.Entity memory retailer = IEntitiesRegistry(entities)
+          .getEntity(retailerId);
 
         // Retailer must be registered
         if (retailer.owner == address(0)) {
@@ -588,7 +405,7 @@ abstract contract DealsRegistry is
         }
 
         // Not-enabled retailer are not allowed
-        if (!retailer.enabled || deposits[retailerId] == 0) {
+        if (!IEntitiesRegistry(entities).isEntityEnabled(retailerId)) {
           revert DisabledRetailer();
         }
       }
@@ -598,7 +415,7 @@ abstract contract DealsRegistry is
         revert DealExists();
       }
 
-      bytes32 paymentHash = hash(paymentOptions);
+      bytes32 paymentHash = Utils.hash(paymentOptions);
 
       // payment options provided with argument must be the same
       // as signed in the offer
@@ -631,14 +448,14 @@ abstract contract DealsRegistry is
     }
 
     // Creating the deal before any external call to avoid reentrancy
-    deals[offer.id] = Deal(
+    deals[offer.id] = Utils.Deal(
       block.timestamp,
       offer,
       retailerId,
       buyer,
       price,
       asset,
-      DealStatus.Created
+      Utils.DealStatus.Created
     );
 
     if (signs.length > 1) {
@@ -652,7 +469,7 @@ abstract contract DealsRegistry is
       revert DealFundsTransferFailed();
     }
 
-    emit Status(offer.id, DealStatus.Created, buyer);
+    emit Status(offer.id, Utils.DealStatus.Created, buyer);
 
     _afterCreate(offer, price, asset, signs);
   }
@@ -677,10 +494,10 @@ abstract contract DealsRegistry is
     onlySigner(offerId)
     inStatuses(offerId, allowedStatuses["reject"])
   {
-    Deal storage storedDeal = deals[offerId];
+    Utils.Deal storage storedDeal = deals[offerId];
 
     // Moving to the Rejected status before all to avoid reentrancy
-    storedDeal.status = DealStatus.Rejected;
+    storedDeal.status = Utils.DealStatus.Rejected;
 
     _beforeReject(offerId, reason);
 
@@ -690,7 +507,7 @@ abstract contract DealsRegistry is
       revert DealFundsTransferFailed();
     }
 
-    emit Status(offerId, DealStatus.Rejected, _msgSender());
+    emit Status(offerId, Utils.DealStatus.Rejected, _msgSender());
 
     _afterReject(offerId, reason);
   }
@@ -713,10 +530,10 @@ abstract contract DealsRegistry is
     onlySigner(offerId)
     inStatuses(offerId, allowedStatuses["refund"])
   {
-    Deal storage storedDeal = deals[offerId];
+    Utils.Deal storage storedDeal = deals[offerId];
 
     // Moving to the Refunded status before all to avoid reentrancy
-    storedDeal.status = DealStatus.Refunded;
+    storedDeal.status = Utils.DealStatus.Refunded;
 
     _beforeRefund(offerId);
 
@@ -726,7 +543,7 @@ abstract contract DealsRegistry is
       revert DealFundsTransferFailed();
     }
 
-    emit Status(offerId, DealStatus.Refunded, _msgSender());
+    emit Status(offerId, Utils.DealStatus.Refunded, _msgSender());
 
     _afterRefund(offerId);
   }
@@ -747,14 +564,14 @@ abstract contract DealsRegistry is
    */
   function cancel(
     bytes32 offerId,
-    CancelOption[] memory _cancelOptions
+    Utils.CancelOption[] memory _cancelOptions
   )
     external
     dealExists(offerId)
     inStatuses(offerId, allowedStatuses["cancel"])
   {
     address sender = _msgSender();
-    Deal storage storedDeal = deals[offerId];
+    Utils.Deal storage storedDeal = deals[offerId];
 
     if (sender != storedDeal.buyer) {
       revert NotAllowedAuth();
@@ -762,18 +579,21 @@ abstract contract DealsRegistry is
 
     // Buyer is not able to cancel the deal during `claim_period`
     // This time is given to the supplier to claim the deal
-    if (block.timestamp < storedDeal.created.add(numbers["claim_period"])) {
+    if (
+      block.timestamp <
+      storedDeal.created.add(IConfig(config).getNumber("claim_period"))
+    ) {
       revert NotAllowedTime();
     }
 
-    DealStatus callStatus = storedDeal.status;
+    Utils.DealStatus callStatus = storedDeal.status;
 
     // Moving to the Cancelled status before all to avoid reentrancy
-    storedDeal.status = DealStatus.Cancelled;
+    storedDeal.status = Utils.DealStatus.Cancelled;
 
     _beforeCancel(offerId);
 
-    if (callStatus == DealStatus.Created) {
+    if (callStatus == Utils.DealStatus.Created) {
       // Full refund
       if (
         !IERC20(storedDeal.asset).transfer(storedDeal.buyer, storedDeal.price)
@@ -781,10 +601,10 @@ abstract contract DealsRegistry is
         revert DealFundsTransferFailed();
       }
     } else if (
-      callStatus == DealStatus.Claimed &&
+      callStatus == Utils.DealStatus.Claimed &&
       block.timestamp < storedDeal.offer.checkIn
     ) {
-      if (storedDeal.offer.cancelHash != hash(_cancelOptions)) {
+      if (storedDeal.offer.cancelHash != Utils.hash(_cancelOptions)) {
         revert InvalidCancelOptions();
       }
 
@@ -806,7 +626,10 @@ abstract contract DealsRegistry is
         selectedPenalty = 100;
       }
 
-      uint256 penaltyValue = _percentage(storedDeal.price, selectedPenalty);
+      uint256 penaltyValue = Utils._percentage(
+        storedDeal.price,
+        selectedPenalty
+      );
 
       if (
         !IERC20(storedDeal.asset).transfer(
@@ -820,7 +643,9 @@ abstract contract DealsRegistry is
       if (
         penaltyValue > 0 &&
         !IERC20(storedDeal.asset).transfer(
-          suppliers[storedDeal.offer.supplierId].owner,
+          IEntitiesRegistry(entities)
+            .getEntity(storedDeal.offer.supplierId)
+            .owner,
           penaltyValue
         )
       ) {
@@ -830,7 +655,7 @@ abstract contract DealsRegistry is
       revert NotAllowedStatus();
     }
 
-    emit Status(offerId, DealStatus.Cancelled, sender);
+    emit Status(offerId, Utils.DealStatus.Cancelled, sender);
 
     _afterCancel(offerId);
   }
@@ -853,12 +678,12 @@ abstract contract DealsRegistry is
     onlySigner(offerId)
     inStatuses(offerId, allowedStatuses["claim"])
   {
-    Deal storage storedDeal = deals[offerId];
+    Utils.Deal storage storedDeal = deals[offerId];
 
     _beforeClaim(offerId, storedDeal.buyer);
 
-    storedDeal.status = DealStatus.Claimed;
-    emit Status(offerId, DealStatus.Claimed, _msgSender());
+    storedDeal.status = Utils.DealStatus.Claimed;
+    emit Status(offerId, Utils.DealStatus.Claimed, _msgSender());
 
     _afterClaim(offerId, storedDeal.buyer);
   }
@@ -888,8 +713,9 @@ abstract contract DealsRegistry is
     dealExists(offerId)
     inStatuses(offerId, allowedStatuses["checkIn"])
   {
-    Deal storage storedDeal = deals[offerId];
-    Supplier storage supplier = suppliers[storedDeal.offer.supplierId];
+    Utils.Deal storage storedDeal = deals[offerId];
+    IEntitiesRegistry.Entity memory supplier = IEntitiesRegistry(entities)
+      .getEntity(storedDeal.offer.supplierId);
 
     address sender = _msgSender();
     bytes32 signInHash;
@@ -897,7 +723,7 @@ abstract contract DealsRegistry is
     if (sender == supplier.signer) {
       // The function is called by the supplier's signer
       signInHash = _hashTypedDataV4(
-        hashCheckInOut(storedDeal.offer.id, supplier.signer)
+        Utils.hashCheckInOut(storedDeal.offer.id, supplier.signer)
       );
 
       // Checking ECDSA/AA signature of the suppliers's signer is valid
@@ -908,7 +734,7 @@ abstract contract DealsRegistry is
       // Before checkIn time of the offer a signature of the buyer is required
       if (block.timestamp < storedDeal.offer.checkIn) {
         signInHash = _hashTypedDataV4(
-          hashCheckInOut(storedDeal.offer.id, storedDeal.buyer)
+          Utils.hashCheckInOut(storedDeal.offer.id, storedDeal.buyer)
         );
 
         // Checking ECDSA/AA signature of the buyer is valid
@@ -918,7 +744,7 @@ abstract contract DealsRegistry is
       }
     } else if (sender == storedDeal.buyer) {
       signInHash = _hashTypedDataV4(
-        hashCheckInOut(storedDeal.offer.id, storedDeal.buyer)
+        Utils.hashCheckInOut(storedDeal.offer.id, storedDeal.buyer)
       );
 
       // Checking ECDSA/AA signature of the suppliers's signer is valid
@@ -927,7 +753,7 @@ abstract contract DealsRegistry is
       }
 
       signInHash = _hashTypedDataV4(
-        hashCheckInOut(storedDeal.offer.id, supplier.signer)
+        Utils.hashCheckInOut(storedDeal.offer.id, supplier.signer)
       );
 
       // Checking ECDSA/AA signature of the buyer is valid
@@ -941,8 +767,8 @@ abstract contract DealsRegistry is
     // Execute before checkIn hook
     _beforeCheckIn(offerId, signs);
 
-    storedDeal.status = DealStatus.CheckedIn;
-    emit Status(offerId, DealStatus.CheckedIn, sender);
+    storedDeal.status = Utils.DealStatus.CheckedIn;
+    emit Status(offerId, Utils.DealStatus.CheckedIn, sender);
 
     // Execute after checkIn hook
     _afterCheckIn(offerId, signs);
@@ -967,14 +793,14 @@ abstract contract DealsRegistry is
     onlySigner(offerId)
     inStatuses(offerId, allowedStatuses["checkOut"])
   {
-    Deal storage storedDeal = deals[offerId];
+    Utils.Deal storage storedDeal = deals[offerId];
 
     if (block.timestamp < storedDeal.offer.checkOut) {
       revert NotAllowedTime();
     }
 
     // Moving to CheckedOut status before all to avoid reentrancy
-    storedDeal.status = DealStatus.CheckedOut;
+    storedDeal.status = Utils.DealStatus.CheckedOut;
 
     // Execute before checkOut hook
     _beforeCheckOut(offerId);
@@ -983,10 +809,16 @@ abstract contract DealsRegistry is
     uint256 retailerFee;
     uint256 supplierValue;
 
-    protocolFee = _percentage(storedDeal.price, numbers["protocol_fee"]);
+    protocolFee = Utils._percentage(
+      storedDeal.price,
+      IConfig(config).getNumber("protocol_fee")
+    );
 
     if (storedDeal.retailerId != bytes32(0)) {
-      retailerFee = _percentage(storedDeal.price, numbers["retailer_fee"]);
+      retailerFee = Utils._percentage(
+        storedDeal.price,
+        IConfig(config).getNumber("retailer_fee")
+      );
     }
 
     supplierValue = storedDeal.price.sub(protocolFee).sub(retailerFee);
@@ -995,7 +827,7 @@ abstract contract DealsRegistry is
       protocolFee > 0 &&
       // Sends fee to the protocol recipient
       !IERC20(storedDeal.asset).transfer(
-        addresses["fee_recipient"],
+        IConfig(config).getAddress("fee_recipient"),
         protocolFee
       )
     ) {
@@ -1006,7 +838,7 @@ abstract contract DealsRegistry is
       retailerFee > 0 &&
       // Send fee to the deal retailer
       !IERC20(storedDeal.asset).transfer(
-        suppliers[storedDeal.retailerId].owner,
+        IEntitiesRegistry(entities).getEntity(storedDeal.retailerId).owner,
         retailerFee
       )
     ) {
@@ -1016,14 +848,16 @@ abstract contract DealsRegistry is
     if (
       // Sends value to the supplier
       !IERC20(storedDeal.asset).transfer(
-        suppliers[storedDeal.offer.supplierId].owner,
+        IEntitiesRegistry(entities)
+          .getEntity(storedDeal.offer.supplierId)
+          .owner,
         supplierValue
       )
     ) {
       revert DealFundsTransferFailed();
     }
 
-    emit Status(offerId, DealStatus.CheckedOut, _msgSender());
+    emit Status(offerId, Utils.DealStatus.CheckedOut, _msgSender());
 
     // Execute after checkOut hook
     _afterCheckOut(offerId);
