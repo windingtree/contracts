@@ -1,23 +1,19 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { expect } from 'chai';
 import { BigNumber, constants } from 'ethers';
 import { ethers } from 'hardhat';
 import { TransferEventObject } from '../../typechain/contracts/Market';
+import { kinds } from '../../src';
+import { Offer } from '../../src/types';
 import {
   structEqual,
-  Offer,
   buildRandomOffer,
   randomId,
   createSupplierId,
-  createPermitSignature,
   getEventArgs,
   createCheckInOutSignature,
   getCancelPenalty,
 } from './utils';
-import { User, minDeposit, setup, registerSupplier, calcFees } from './setup';
+import { User, setup, registerEntity, calcFees } from './setup';
 
 enum DealStatus {
   Created, // Just created
@@ -30,7 +26,7 @@ enum DealStatus {
   Disputed, // Dispute started
 }
 
-describe('Market contract', () => {
+describe('Market', () => {
   let owner: User;
   let notOwner: User;
   let buyer: User;
@@ -112,181 +108,6 @@ describe('Market contract', () => {
     });
   });
 
-  describe('SuppliersRegistry', () => {
-    let supplierSalt: string;
-    let supplierId: string;
-
-    beforeEach(async () => {
-      supplierSalt = randomId();
-      supplierId = createSupplierId(supplierOwner.address, supplierSalt);
-
-      await registerSupplier(
-        supplierOwner.market,
-        supplierSalt,
-        supplierOwner,
-        supplierSigner,
-        supplierOwner.lif,
-        false,
-      );
-    });
-
-    describe('#toggleSupplier(bytes32); #isSupplierEnabled(bytes32)', () => {
-      it('should throw if called not by a owner', async () => {
-        await expect(owner.market.toggleSupplier(supplierId)).to.revertedWithCustomError(
-          owner.market,
-          'NotSupplierOwner',
-        );
-      });
-
-      it('should toggle the supplier state', async () => {
-        expect(await supplierOwner.market.isSupplierEnabled(supplierId)).to.false;
-        await supplierOwner.market.toggleSupplier(supplierId);
-        expect(await supplierOwner.market.isSupplierEnabled(supplierId)).to.true;
-      });
-    });
-
-    describe('#changeSigner(bytes32,address)', () => {
-      it('should throw if called not by a owner', async () => {
-        await expect(
-          owner.market.changeSigner(supplierId, owner.address),
-        ).to.revertedWithCustomError(owner.market, 'NotSupplierOwner');
-      });
-
-      it('should change the supplier signer', async () => {
-        let supplier = await supplierSigner.market.suppliers(supplierId);
-        expect(supplier.signer).to.eq(supplierSigner.address);
-        await supplierOwner.market.changeSigner(supplierId, owner.address);
-        supplier = await supplierOwner.market.suppliers(supplierId);
-        expect(supplier.signer).to.eq(owner.address);
-      });
-    });
-
-    describe('#register(bytes32,address)', () => {
-      it('should register the supplier', async () => {
-        const supplier = await supplierOwner.market.suppliers(supplierId);
-        expect(supplier.id).to.eq(supplierId);
-      });
-
-      it('should be initially disabled', async () => {
-        expect(await supplierOwner.market.isSupplierEnabled(supplierId)).to.false;
-      });
-
-      it('should throw on attempt to register twice', async () => {
-        await expect(
-          supplierOwner.market.register(supplierSalt, supplierSigner.address),
-        ).to.revertedWithCustomError(supplierOwner.market, 'SupplierExists');
-      });
-    });
-
-    describe('#addDeposit(bytes32,uit256,bytes); #balanceOfSupplier(bytes32)', () => {
-      const value = BigNumber.from('1');
-      const deadline = Math.floor(Date.now() / 1000) + 3600;
-
-      it('should throw if deposit value to small', async () => {
-        const supplierSalt = randomId();
-        const supplierId = createSupplierId(supplierOwner.address, supplierSalt);
-
-        await registerSupplier(
-          supplierOwner.market,
-          supplierSalt,
-          supplierOwner,
-          supplierSigner,
-          undefined,
-          false,
-        );
-
-        const notEnoughValue = minDeposit.sub(BigNumber.from('1'));
-
-        await supplierOwner.lif.approve(supplierOwner.market.address, notEnoughValue);
-        await expect(
-          supplierOwner.market['addDeposit(bytes32,uint256)'](supplierId, notEnoughValue),
-        ).to.rejected;
-      });
-
-      it('should throw if tokens not approved', async () => {
-        await expect(supplierOwner.market['addDeposit(bytes32,uint256)'](supplierId, '1'))
-          .to.rejected;
-      });
-
-      it('should add deposit', async () => {
-        const lifBefore = await supplierOwner.lif.balanceOf(supplierOwner.address);
-        expect(await supplierOwner.market.balanceOfSupplier(supplierId)).to.eq(
-          minDeposit,
-        );
-        const value = BigNumber.from('1');
-        await supplierOwner.lif.approve(supplierOwner.market.address, value);
-        await supplierOwner.market['addDeposit(bytes32,uint256)'](supplierId, value);
-        expect(await supplierOwner.market.balanceOfSupplier(supplierId)).to.eq(
-          minDeposit.add(value),
-        );
-        expect(await supplierOwner.lif.balanceOf(supplierOwner.address)).to.eq(
-          lifBefore.sub(value),
-        );
-      });
-
-      it('should throw if invalid permit signature provided', async () => {
-        await expect(
-          supplierOwner.market['addDeposit(bytes32,uint256,uint256,bytes)'](
-            supplierId,
-            value,
-            deadline,
-            constants.HashZero,
-          ),
-        ).to.revertedWithCustomError(supplierOwner.market, 'InvalidSignature');
-      });
-
-      it('should add deposit using permit', async () => {
-        const signature = await createPermitSignature(
-          supplierOwner.signer,
-          supplierOwner.lif,
-          supplierOwner.address,
-          supplierOwner.market.address,
-          value,
-          deadline,
-        );
-
-        expect(await supplierOwner.market.balanceOfSupplier(supplierId)).to.eq(
-          minDeposit,
-        );
-        await supplierOwner.market['addDeposit(bytes32,uint256,uint256,bytes)'](
-          supplierId,
-          value,
-          deadline,
-          signature,
-        );
-        expect(await supplierOwner.market.balanceOfSupplier(supplierId)).to.eq(
-          minDeposit.add(value),
-        );
-      });
-    });
-
-    describe('#withdrawDeposit(bytes32,uit256,bytes)', () => {
-      it('should throw if balance not enough', async () => {
-        const balance = await supplierOwner.market.balanceOfSupplier(supplierId);
-        await expect(
-          supplierOwner.market.withdrawDeposit(
-            supplierId,
-            balance.add(BigNumber.from('1')),
-          ),
-        ).to.rejected;
-      });
-
-      it('should withdraw deposit', async () => {
-        const lifBefore = await supplierOwner.lif.balanceOf(supplierOwner.address);
-        expect(await supplierOwner.market.balanceOfSupplier(supplierId)).to.eq(
-          minDeposit,
-        );
-        await supplierOwner.market.withdrawDeposit(supplierId, minDeposit);
-        expect(await supplierOwner.market.balanceOfSupplier(supplierId)).to.eq(
-          constants.Zero,
-        );
-        expect(await supplierOwner.lif.balanceOf(supplierOwner.address)).to.eq(
-          lifBefore.add(minDeposit),
-        );
-      });
-    });
-  });
-
   describe('DealsRegistry', () => {
     let supplierId: string;
     let retailerId: string;
@@ -299,19 +120,19 @@ describe('Market contract', () => {
       const retailerSalt = randomId();
       retailerId = createSupplierId(retailerOwner.address, retailerSalt);
 
-      await registerSupplier(
-        supplierOwner.market,
-        supplierSalt,
+      await registerEntity(
         supplierOwner,
         supplierSigner,
+        kinds.supplier,
+        supplierSalt,
         supplierOwner.lif,
       );
 
-      await registerSupplier(
-        retailerOwner.market,
-        retailerSalt,
+      await registerEntity(
         retailerOwner,
         retailerSigner,
+        kinds.retailer,
+        retailerSalt,
         retailerOwner.lif,
       );
 
@@ -381,7 +202,7 @@ describe('Market contract', () => {
           status,
         } = await buyer.market.deals(offer.payload.id);
         expect(buyerAddress).to.eq(buyer.address);
-        structEqual(contractOffer, offer.payload);
+        structEqual(contractOffer, offer.payload, 'Offer');
         expect(price).to.eq(offer.payment[0].price);
         expect(asset).to.eq(offer.payment[0].asset);
         expect(status).to.eq(0);
@@ -415,7 +236,7 @@ describe('Market contract', () => {
             retailerId,
             [offerNotRegistered.signature],
           ),
-        ).to.revertedWithCustomError(buyer.market, 'InvalidSupplier');
+        ).to.revertedWithCustomError(buyer.entities, 'EntityNotFound');
       });
 
       it('should throw if invalid signature provided', async () => {
@@ -431,8 +252,8 @@ describe('Market contract', () => {
       });
 
       it('should throw if supplier of the offer is disabled', async () => {
-        await supplierOwner.market.toggleSupplier(offer.payload.supplierId);
-        expect(await supplierOwner.market.isSupplierEnabled(offer.payload.supplierId)).to
+        await supplierOwner.entities.toggleEntity(offer.payload.supplierId);
+        expect(await supplierOwner.entities.isEntityEnabled(offer.payload.supplierId)).to
           .false;
         await expect(
           buyer.market.deal(
@@ -448,8 +269,8 @@ describe('Market contract', () => {
 
     describe('#claim(bytes32)', () => {
       before(async () => {
-        if (!(await supplierOwner.market.isSupplierEnabled(supplierId))) {
-          await supplierOwner.market.toggleSupplier(supplierId);
+        if (!(await supplierOwner.entities.isEntityEnabled(supplierId))) {
+          await supplierOwner.entities.toggleEntity(supplierId);
         }
       });
 
@@ -508,7 +329,7 @@ describe('Market contract', () => {
             status,
           } = await buyer.market.deals(offer.payload.id);
           expect(buyerAddress).to.eq(buyer.address);
-          structEqual(contractOffer, offer.payload);
+          structEqual(contractOffer, offer.payload, 'Offer');
           expect(price).to.eq(offer.payment[0].price);
           expect(asset).to.eq(offer.payment[0].asset);
           expect(status).to.eq(DealStatus.Claimed);
@@ -649,7 +470,7 @@ describe('Market contract', () => {
           retailerId,
           [offer.signature],
         );
-        claimPeriod = await buyer.market.numbers(
+        claimPeriod = await buyer.config.getNumber(
           ethers.utils.formatBytes32String('claim_period'),
         );
       });

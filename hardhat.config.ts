@@ -4,11 +4,11 @@ import '@nomiclabs/hardhat-ethers';
 import '@nomiclabs/hardhat-solhint';
 import '@nomicfoundation/hardhat-chai-matchers';
 import '@openzeppelin/hardhat-upgrades';
-import '@nomiclabs/hardhat-etherscan';
 import '@typechain/hardhat';
 import 'hardhat-deploy';
 import 'hardhat-deploy-ethers';
 import 'hardhat-gas-reporter';
+import 'hardhat-contract-sizer';
 import 'solidity-coverage';
 import './tasks';
 import { nodeUrl, accounts, addForkConfiguration } from './utils/network';
@@ -21,7 +21,7 @@ const config: HardhatUserConfig = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 2000,
+            runs: 200,
           },
         },
       },
@@ -44,6 +44,15 @@ const config: HardhatUserConfig = {
     localhost: {
       url: nodeUrl('localhost'),
       accounts: accounts(),
+    },
+    polzktest: {
+      url: nodeUrl('polzktest'),
+      accounts: accounts('polzktest'),
+      verify: {
+        etherscan: {
+          apiUrl: 'https://explorer.public.zkevm-test.net',
+        },
+      },
     },
   }),
   gasReporter: {
@@ -72,6 +81,12 @@ const config: HardhatUserConfig = {
     etherscan: {
       apiKey: process.env.ETHERSCAN_API_KEY,
     },
+  },
+  contractSizer: {
+    alphaSort: true,
+    disambiguatePaths: false,
+    runOnCompile: true,
+    strict: true,
   },
 };
 

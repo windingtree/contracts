@@ -1,29 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { expect } from 'chai';
-import {
-  utils,
-  BigNumber,
-  TypedDataField,
-  VoidSigner,
-  ContractTransaction,
-} from 'ethers';
+import { utils, BigNumber, TypedDataField, VoidSigner } from 'ethers';
 import {
   PAYMENT_OPTION_TYPE_HASH,
   CANCEL_OPTION_TYPE_HASH,
   OFFER_TYPE_HASH,
-} from '../../src/constants';
-import { MockERC20Dec18Permit } from '../../typechain';
-import {
-  PaymentOption,
-  CancelOption,
-  OfferPayload,
-  Offer,
-  Request,
-} from '../../src/types';
-
-export const nonces: Record<string, number> = {
-  request: 1,
-};
+} from './constants';
+import { MockERC20Dec18Permit } from '../typechain';
+import { PaymentOption, CancelOption, OfferPayload, Offer, Request } from './types';
 
 export const randomId = (): string =>
   utils.solidityKeccak256(
@@ -170,83 +153,6 @@ export const checkInOutTypes: Record<string, Array<TypedDataField>> = {
   ],
 };
 
-export const buildRandomOffer = async (
-  supplierId: string,
-  signer: VoidSigner,
-  name: string,
-  version: string,
-  chainId: BigNumber,
-  verifyingContract: string,
-  erc20address: string,
-  transferableOverride?: boolean,
-  timestamp = BigNumber.from(Math.round(Date.now() / 1000)),
-): Promise<Offer> => {
-  const request: Request = {
-    id: randomId(),
-    expire: timestamp.add(BigNumber.from(3600)),
-    nonce: BigNumber.from(nonces.request++),
-    topic: Math.random().toString(),
-    query: {},
-  };
-
-  const payment: PaymentOption[] = [
-    {
-      id: randomId(),
-      price: BigNumber.from('100'),
-      asset: erc20address,
-    },
-  ];
-
-  const checkInTime = timestamp.add(BigNumber.from(3600));
-
-  const cancel: CancelOption[] = [
-    {
-      time: checkInTime.sub(BigNumber.from(1200)),
-      penalty: BigNumber.from('50'),
-    },
-    {
-      time: checkInTime.sub(BigNumber.from(60)),
-      penalty: BigNumber.from('100'),
-    },
-  ];
-
-  const offerPayload: OfferPayload = {
-    id: randomId(),
-    expire: timestamp.add(BigNumber.from(1200)),
-    supplierId: supplierId,
-    chainId: BigNumber.from(270),
-    requestHash: hashObject(request),
-    optionsHash: hashObject({}),
-    paymentHash: hashPaymentOptionArray(payment),
-    cancelHash: hashCancelOptionArray(cancel),
-    transferable: transferableOverride ?? Math.random() > 0.5,
-    checkIn: checkInTime,
-    checkOut: checkInTime.add(BigNumber.from(7200)),
-  };
-
-  const signature = await signer._signTypedData(
-    {
-      name,
-      version,
-      chainId,
-      verifyingContract,
-    },
-    offerEip712Types,
-    offerPayload,
-  );
-
-  const offer: Offer = {
-    request,
-    options: {},
-    payment,
-    cancel,
-    payload: offerPayload,
-    signature,
-  };
-
-  return offer;
-};
-
 export const createCheckInOutSignature = async (
   signer: VoidSigner,
   offerId: string,
@@ -340,26 +246,55 @@ export const getCancelPenalty = (options: CancelOption[], timestamp: BigNumber) 
   return selectedPenalty.lte(BigNumber.from(100)) ? selectedPenalty : BigNumber.from(100);
 };
 
-export const structEqual = (
-  struct: { [k: string]: any },
-  obj: { [k: string]: any },
-  structName = '',
-) => {
-  for (const key of Object.keys(obj)) {
-    expect(obj[key]).to.eq(struct[key], `"${structName}.${key}" value validation failed`);
-  }
-};
+export const buildOffer = async (
+  signer: VoidSigner,
+  supplierId: string,
+  expire: BigNumber,
+  checkIn: BigNumber,
+  checkOut: BigNumber,
+  request: Request,
+  offerOptions: object,
+  payment: PaymentOption[],
+  cancel: CancelOption[],
+  transferableOverride: boolean,
+  name: string,
+  version: string,
+  chainId: BigNumber,
+  verifyingContract: string,
+): Promise<Offer> => {
+  const offerPayload: OfferPayload = {
+    id: randomId(),
+    expire,
+    supplierId: supplierId,
+    chainId,
+    requestHash: hashObject(request),
+    optionsHash: hashObject(offerOptions),
+    paymentHash: hashPaymentOptionArray(payment),
+    cancelHash: hashCancelOptionArray(cancel),
+    transferable: transferableOverride ?? Math.random() > 0.5,
+    checkIn,
+    checkOut,
+  };
 
-export const getEventArgs = async <T>(tx: ContractTransaction, name: string) => {
-  const { events } = await tx.wait();
+  const signature = await signer._signTypedData(
+    {
+      name,
+      version,
+      chainId,
+      verifyingContract,
+    },
+    offerEip712Types,
+    offerPayload,
+  );
 
-  if (events) {
-    for (const event of events) {
-      if (event.event === name) {
-        return event.args as T;
-      }
-    }
-  }
+  const offer: Offer = {
+    request,
+    options: offerOptions,
+    payment,
+    cancel,
+    payload: offerPayload,
+    signature,
+  };
 
-  throw new Error(`Event ${name} not found in the transaction ${tx.hash}`);
+  return offer;
 };
