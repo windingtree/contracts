@@ -14,40 +14,21 @@ import {
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { network, deployments, getNamedAccounts } = hre;
 
-  if (!['hardhat', 'localhost'].includes(network.name)) {
+  if (!['polzktest'].includes(network.name)) {
     return;
   }
 
   const { deploy } = deployments;
   const { owner } = await getNamedAccounts();
 
+  console.log(`Deployer: ${owner}`);
+
   const PROXY_SETTINGS_WITH_UPGRADE = {
     owner,
     proxyContract: 'OpenZeppelinTransparentProxy',
   };
 
-  // Simple ERC20 token
-  const erc20 = await deploy('MockERC20Dec18', {
-    proxy: {
-      ...PROXY_SETTINGS_WITH_UPGRADE,
-      execute: {
-        methodName: 'initialize',
-        args: ['STABLE', 'STABLE', owner],
-      },
-    },
-    from: owner,
-    log: true,
-    autoMine: true,
-  });
-
-  if (erc20.newlyDeployed) {
-    console.log(
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      `MockERC20Dec18 (erc20) was deployed at: ${erc20.address} using ${erc20.receipt?.gasUsed} gas`,
-    );
-  }
-
-  // ERC20 token with permit
+  // Setup LIF
   const lif = await deploy('MockERC20Dec18Permit', {
     proxy: {
       ...PROXY_SETTINGS_WITH_UPGRADE,
@@ -62,10 +43,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   });
 
   if (lif.newlyDeployed) {
-    console.log(
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      `MockERC20Dec18Permit (lif) was deployed at: ${lif.address} using ${lif.receipt?.gasUsed} gas`,
-    );
+    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+    console.log(`LIF token deployed at ${lif.address} using ${lif.receipt?.gasUsed} gas`);
   }
 
   // Protocol Config
@@ -148,4 +127,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 export default func;
-func.tags = ['MockERC20Dec18', 'MockERC20Dec18Permit', 'Market'];
+func.tags = ['MockERC20Dec18Permit', 'Market'];
