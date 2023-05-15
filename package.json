@@ -97,7 +97,7 @@
   },
   "scripts": {
     "build:contracts": "hardhat compile",
-    "build:src": "rm -rf ./lib && typechain --target=ethers-v6 --out-dir typechainV6 artifacts/**/Config.json artifacts/**/EntitiesRegistry.json artifacts/**/Market.json && tsc -p ./tsconfig.build.json",
+    "build:src": "rm -rf ./lib && typechain --target=ethers-v6 --out-dir typechainV6 ./artifacts/contracts/Config.sol/Config.json ./artifacts/contracts/EntitiesRegistry.sol/EntitiesRegistry.json ./artifacts/contracts/Market.sol/Market.json && tsc -p ./tsconfig.build.json",
     "test:contracts": "hardhat test",
     "test:src": "mocha -t 60000 --extension spec.ts test/src",
     "lint": "solhint . && eslint --ext .ts",
