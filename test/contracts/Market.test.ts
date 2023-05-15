@@ -2,8 +2,8 @@ import { expect } from 'chai';
 import { BigNumber, constants } from 'ethers';
 import { ethers } from 'hardhat';
 import { TransferEventObject } from '../../typechain/contracts/Market';
-import { kinds } from '../../src';
-import { Offer } from '../../src/types';
+import { kinds } from '../../utils/constants';
+import { Offer } from '../../utils/types';
 import {
   structEqual,
   buildRandomOffer,
