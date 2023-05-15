@@ -1536,6 +1536,14 @@
     lodash "^4.17.15"
     ts-essentials "^7.0.1"
 
+"@typechain/ethers-v6@^0.3.2":
+  version "0.3.2"
+  resolved "https://registry.yarnpkg.com/@typechain/ethers-v6/-/ethers-v6-0.3.2.tgz#c7c9ed2cbe6869a131e55646ce775e3673f0c123"
+  integrity sha512-LUxAVAHICc6lROLf16JIl/j0FVuCQ93qLkGxlVFM1QCN5V4QRUE2scNwhKLIh8urik1c0FcvFujOPtBV4erqYg==
+  dependencies:
+    lodash "^4.17.15"
+    ts-essentials "^7.0.1"
+
 "@typechain/hardhat@^6.1.6":
   version "6.1.6"
   resolved "https://registry.yarnpkg.com/@typechain/hardhat/-/hardhat-6.1.6.tgz#1a749eb35e5054c80df531cf440819cb347c62ea"

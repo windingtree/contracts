@@ -18,4 +18,5 @@ cache-zk
 artifacts
 cache
 typechain
+typechainV6
 network/volumes
