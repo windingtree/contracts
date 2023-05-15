@@ -19,7 +19,7 @@ import {
   OfferPayload,
   Offer,
   Request,
-} from '../../src/types';
+} from '../../utils/types';
 
 export const nonces: Record<string, number> = {
   request: 1,

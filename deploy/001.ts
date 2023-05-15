@@ -9,7 +9,7 @@ import {
   protocolFee,
   retailerFee,
   minDeposit,
-} from '../src';
+} from '../utils/constants';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { network, deployments, getNamedAccounts } = hre;
