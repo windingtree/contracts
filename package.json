@@ -65,10 +65,9 @@
     "@openzeppelin/contracts-upgradeable": "^4.8.3"
   },
   "scripts": {
-    "build:contracts": "hardhat compile",
-    "package:update": "rm -rf ./package/typechain ./package/artifacts && yarn build:contracts && cp -r ./artifacts ./package/artifacts && cp ./README.md ./package/README.md && yarn --cwd ./package build",
-    "test:contracts": "hardhat test",
-    "test:src": "mocha -t 60000 --extension spec.ts test/src",
+    "build": "hardhat compile",
+    "package:update": "rm -rf ./package/typechain ./package/artifacts && yarn build && cp -r ./artifacts ./package/artifacts && cp ./README.md ./package/README.md && yarn --cwd ./package build",
+    "test": "hardhat test",
     "lint": "solhint . && eslint --ext .ts",
     "lint:fix": "eslint --ext .ts --fix && solhint --fix . && prettier --check !network --write .",
     "coverage": "npx hardhat coverage",
