@@ -19,38 +19,7 @@
     "Kostiantyn Smyrnov <kostysh@gmail.com>"
   ],
   "license": "MIT",
-  "private": false,
-  "types": "./lib/src/index.d.ts",
-  "main": "./lib/src/index.js",
-  "files": [
-    "lib/src/*",
-    "lib/artifacts/*",
-    "lib/typechain/*",
-    "!**/*.tsbuildinfo",
-    "!**/**.dbg.json"
-  ],
-  "release": {
-    "branches": [
-      {
-        "name": "main"
-      },
-      {
-        "name": "beta",
-        "channel": "beta",
-        "prerelease": true
-      }
-    ],
-    "plugins": [
-      "@semantic-release/commit-analyzer",
-      "@semantic-release/changelog",
-      "@semantic-release/release-notes-generator",
-      "@semantic-release/npm",
-      "@semantic-release/github"
-    ]
-  },
-  "publishConfig": {
-    "access": "public"
-  },
+  "private": true,
   "devDependencies": {
     "@types/node": "^18.15.11",
     "@types/mocha": "^10.0.1",
@@ -96,10 +65,9 @@
     "@openzeppelin/contracts-upgradeable": "^4.8.3"
   },
   "scripts": {
-    "build:contracts": "hardhat compile",
-    "build:src": "rm -rf ./lib && typechain --target=ethers-v6 --out-dir typechainV6 ./artifacts/contracts/Config.sol/Config.json ./artifacts/contracts/EntitiesRegistry.sol/EntitiesRegistry.json ./artifacts/contracts/Market.sol/Market.json && tsc -p ./tsconfig.build.json",
-    "test:contracts": "hardhat test",
-    "test:src": "mocha -t 60000 --extension spec.ts test/src",
+    "build": "hardhat compile",
+    "package:update": "rm -rf ./package/typechain ./package/artifacts && yarn build && cp -r ./artifacts ./package/artifacts && cp ./README.md ./package/README.md && yarn --cwd ./package build",
+    "test": "hardhat test",
     "lint": "solhint . && eslint --ext .ts",
     "lint:fix": "eslint --ext .ts --fix && solhint --fix . && prettier --check !network --write .",
     "coverage": "npx hardhat coverage",

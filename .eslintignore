@@ -12,4 +12,4 @@ artifacts
 cache
 ./**/*.sol
 typechain
-typechainV6
+package
