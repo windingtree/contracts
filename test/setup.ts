@@ -1,15 +1,15 @@
-import { expect } from 'chai';
+import { expect } from "chai";
 import {
   MockERC20Dec18,
   MockERC20Dec18Permit,
   Market,
   Config,
   EntitiesRegistry,
-} from '../../typechain';
-import { ethers, deployments, getNamedAccounts } from 'hardhat';
-import { BigNumber, Contract, VoidSigner } from 'ethers';
-import { protocolFee, retailerFee, minDeposit } from '../../utils/constants';
-import { structEqual, createSupplierId } from './utils';
+} from "../typechain";
+import { ethers, deployments, getNamedAccounts } from "hardhat";
+import { BigNumber, Contract, VoidSigner } from "ethers";
+import { protocolFee, retailerFee, minDeposit } from "../utils/constants";
+import { structEqual, createSupplierId } from "./utils";
 
 export interface Contracts {
   erc20: MockERC20Dec18;
@@ -28,7 +28,7 @@ export type Users = Record<string, User>;
 
 export const setupUser = async (
   address: string,
-  contracts: Record<string, Contract>,
+  contracts: Record<string, Contract>
 ): Promise<User> => {
   const signer = await ethers.getSigner(address);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -44,7 +44,7 @@ export const setupUser = async (
 
 export const setupUsers = async (
   namedUsers: Record<string, string>, // name => address
-  contracts: Record<string, Contract>, // contractName => Contract
+  contracts: Record<string, Contract> // contractName => Contract
 ): Promise<Users> => {
   const users: Users = {};
 
@@ -56,14 +56,14 @@ export const setupUsers = async (
 };
 
 export const setup = deployments.createFixture(async () => {
-  await deployments.fixture('Market');
+  await deployments.fixture("Market");
 
   const contracts = {
-    erc20: <MockERC20Dec18>await ethers.getContract('MockERC20Dec18'),
-    lif: <MockERC20Dec18Permit>await ethers.getContract('MockERC20Dec18Permit'),
-    config: <Config>await ethers.getContract('Config'),
-    entities: <EntitiesRegistry>await ethers.getContract('EntitiesRegistry'),
-    market: <Market>await ethers.getContract('Market'),
+    erc20: <MockERC20Dec18>await ethers.getContract("MockERC20Dec18"),
+    lif: <MockERC20Dec18Permit>await ethers.getContract("MockERC20Dec18Permit"),
+    config: <Config>await ethers.getContract("Config"),
+    entities: <EntitiesRegistry>await ethers.getContract("EntitiesRegistry"),
+    market: <Market>await ethers.getContract("Market"),
   };
 
   const users = await setupUsers(await getNamedAccounts(), contracts);
@@ -80,12 +80,12 @@ export const registerEntity = async (
   kind: string,
   salt: string,
   lif?: MockERC20Dec18Permit,
-  enable = true,
+  enable = true
 ) => {
   const supplierId = createSupplierId(owner.address, salt);
   const tx = await owner.entities.register(kind, salt, signer.address);
   await expect(tx)
-    .to.emit(owner.entities, 'EntityRegistered')
+    .to.emit(owner.entities, "EntityRegistered")
     .withArgs(owner.address, supplierId);
   structEqual(
     await owner.entities.getEntity(supplierId),
@@ -95,11 +95,11 @@ export const registerEntity = async (
       enabled: false,
       signer: signer.address,
     },
-    'Entity',
+    "Entity"
   );
   if (lif) {
     await lif.approve(owner.entities.address, minDeposit);
-    await owner.entities['addDeposit(bytes32,uint256)'](supplierId, minDeposit);
+    await owner.entities["addDeposit(bytes32,uint256)"](supplierId, minDeposit);
   }
   if (enable) {
     await owner.entities.toggleEntity(supplierId);

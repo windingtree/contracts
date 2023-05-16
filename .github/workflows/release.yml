@@ -26,11 +26,9 @@ jobs:
           yarn lint
           yarn --cwd package lint
       - name: Test
-        run: yarn test:contracts
+        run: yarn test
       - name: Build project
-        run: |
-          yarn build:contracts
-          yarn package:update
+        run: yarn package:update
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

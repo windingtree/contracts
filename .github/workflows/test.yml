@@ -23,4 +23,4 @@ jobs:
       - name: Check contract sizes
         run: yarn hardhat size-contracts
       - name: Test
-        run: yarn test:src && yarn test:contracts
+        run: yarn yarn test
