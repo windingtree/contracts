@@ -25,10 +25,10 @@ jobs:
         run: |
           yarn lint
           yarn --cwd package lint
-      - name: Test
-        run: yarn test
       - name: Build project
         run: yarn package:update
+      - name: Test
+        run: yarn test
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
