@@ -18,17 +18,23 @@ jobs:
         with:
           node-version: "lts/*"
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: |
+          yarn install --frozen-lockfile
+          yarn --cwd package install --frozen-lockfile
       - name: Lint
-        run: yarn lint
+        run: |
+          yarn lint
+          yarn --cwd package lint
       - name: Test
-        run: yarn test:src && yarn test:contracts
+        run: yarn test:contracts
       - name: Build project
         run: |
           yarn build:contracts
-          yarn build:src
+          yarn package:update
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npx semantic-release
+        run: |
+          cd package
+          npx semantic-release
