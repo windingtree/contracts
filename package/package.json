@@ -41,8 +41,8 @@
   },
   "exports": {
     ".": {
-      "types": "./lib/index.d.ts",
-      "import": "./lib/index.js"
+      "types": "./lib/src/index.d.ts",
+      "import": "./lib/src/index.js"
     },
     "./types": {
       "types": "./lib/typechain/index.d.ts",
