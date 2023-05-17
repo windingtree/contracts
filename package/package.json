@@ -91,7 +91,7 @@
     "@typechain/ethers-v6": "^0.3.2"
   },
   "scripts": {
-    "build": "rm -rf ./lib && typechain --target=ethers-v6 --out-dir typechain ./artifacts/contracts/Config.sol/Config.json ./artifacts/contracts/EntitiesRegistry.sol/EntitiesRegistry.json ./artifacts/contracts/Market.sol/Market.json && tsc -p ./tsconfig.build.json",
+    "build": "rm -rf ./lib && typechain --target=ethers-v6 --out-dir typechain ./artifacts/contracts/Config.sol/Config.json ./artifacts/contracts/EntitiesRegistry.sol/EntitiesRegistry.json ./artifacts/contracts/Market.sol/Market.json ./artifacts/contracts/test/MockERC20Dec18Permit.sol/MockERC20Dec18Permit.json && tsc -p ./tsconfig.build.json",
     "lint": "eslint --ext .ts",
     "lint:fix": "eslint --ext .ts --fix && prettier --check !network --write ."
   }
