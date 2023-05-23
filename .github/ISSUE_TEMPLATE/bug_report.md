@@ -1,9 +1,9 @@
 ---
 name: Bug report
 about: Create a report to help us improve
-title: ''
-labels: 'triage needed'
-assignees: ''
+title: ""
+labels: "triage needed"
+assignees: ""
 ---
 
 **⚠️ CAUTION: Any issue related to trading / price / not related with the code directly within this repository will be closed without comment**

@@ -1,23 +1,23 @@
-import 'dotenv/config';
-import { HardhatUserConfig } from 'hardhat/types';
-import '@nomiclabs/hardhat-ethers';
-import '@nomiclabs/hardhat-solhint';
-import '@nomicfoundation/hardhat-chai-matchers';
-import '@openzeppelin/hardhat-upgrades';
-import '@typechain/hardhat';
-import 'hardhat-deploy';
-import 'hardhat-deploy-ethers';
-import 'hardhat-gas-reporter';
-import 'hardhat-contract-sizer';
-import 'solidity-coverage';
-import './tasks';
-import { nodeUrl, accounts, addForkConfiguration } from './utils/network';
+import "dotenv/config";
+import { HardhatUserConfig } from "hardhat/types";
+import "@nomiclabs/hardhat-ethers";
+import "@nomiclabs/hardhat-solhint";
+import "@nomicfoundation/hardhat-chai-matchers";
+import "@openzeppelin/hardhat-upgrades";
+import "@typechain/hardhat";
+import "hardhat-deploy";
+import "hardhat-deploy-ethers";
+import "hardhat-gas-reporter";
+import "hardhat-contract-sizer";
+import "solidity-coverage";
+import "./tasks";
+import { nodeUrl, accounts, addForkConfiguration } from "./utils/network";
 
 const config: HardhatUserConfig = {
   solidity: {
     compilers: [
       {
-        version: '0.8.19',
+        version: "0.8.19",
         settings: {
           optimizer: {
             enabled: true,
@@ -42,29 +42,29 @@ const config: HardhatUserConfig = {
       allowUnlimitedContractSize: true,
     },
     localhost: {
-      url: nodeUrl('localhost'),
+      url: nodeUrl("localhost"),
       accounts: accounts(),
     },
     polzktest: {
-      url: nodeUrl('polzktest'),
-      accounts: accounts('polzktest'),
+      url: nodeUrl("polzktest"),
+      accounts: accounts("polzktest"),
       verify: {
         etherscan: {
-          apiUrl: 'https://explorer.public.zkevm-test.net',
+          apiUrl: "https://explorer.public.zkevm-test.net",
         },
       },
     },
   }),
   gasReporter: {
-    currency: 'USD',
+    currency: "USD",
     gasPrice: 100,
     enabled: process.env.REPORT_GAS ? true : false,
     coinmarketcap: process.env.COINMARKETCAP_API_KEY,
     maxMethodDiff: 10,
   },
   typechain: {
-    outDir: 'typechain',
-    target: 'ethers-v5',
+    outDir: "typechain",
+    target: "ethers-v5",
   },
   mocha: {
     timeout: 0,
@@ -72,8 +72,8 @@ const config: HardhatUserConfig = {
   external: process.env.HARDHAT_FORK
     ? {
         deployments: {
-          hardhat: ['deployments/' + process.env.HARDHAT_FORK],
-          localhost: ['deployments/' + process.env.HARDHAT_FORK],
+          hardhat: ["deployments/" + process.env.HARDHAT_FORK],
+          localhost: ["deployments/" + process.env.HARDHAT_FORK],
         },
       }
     : undefined,

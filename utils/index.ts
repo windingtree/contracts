@@ -1,43 +1,49 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { utils, BigNumber, TypedDataField, VoidSigner } from 'ethers';
+import { utils, BigNumber, TypedDataField, VoidSigner } from "ethers";
 import {
   PAYMENT_OPTION_TYPE_HASH,
   CANCEL_OPTION_TYPE_HASH,
   OFFER_TYPE_HASH,
-} from '../src/constants';
-import { MockERC20Dec18Permit } from '../typechain';
-import { PaymentOption, CancelOption, OfferPayload, Offer, Request } from './types';
+} from "../src/constants";
+import { MockERC20Dec18Permit } from "../typechain";
+import {
+  PaymentOption,
+  CancelOption,
+  OfferPayload,
+  Offer,
+  Request,
+} from "./types";
 
 export const randomId = (): string =>
   utils.solidityKeccak256(
-    ['string'],
+    ["string"],
     [
       Math.random()
         .toString(16)
-        .replace('.', '')
-        .split('')
+        .replace(".", "")
+        .split("")
         .sort(() => (Math.random() > 0.5 ? 1 : -1))
-        .join('')
+        .join("")
         .slice(0, 14),
-    ],
+    ]
   );
 
 export const createSupplierId = (address: string, salt: string): string =>
-  utils.solidityKeccak256(['address', 'bytes32'], [address, salt]);
+  utils.solidityKeccak256(["address", "bytes32"], [address, salt]);
 
 export const hashObject = (request: unknown): string =>
-  utils.solidityKeccak256(['string'], [JSON.stringify(request)]);
+  utils.solidityKeccak256(["string"], [JSON.stringify(request)]);
 
 export const hashPaymentOption = (option: PaymentOption): string =>
   utils.solidityKeccak256(
-    ['bytes32', 'bytes32', 'uint256', 'address'],
-    [PAYMENT_OPTION_TYPE_HASH, option.id, option.price, option.asset],
+    ["bytes32", "bytes32", "uint256", "address"],
+    [PAYMENT_OPTION_TYPE_HASH, option.id, option.price, option.asset]
   );
 
 export const hashCancelOption = (option: CancelOption): string =>
   utils.solidityKeccak256(
-    ['bytes32', 'uint256', 'uint256'],
-    [CANCEL_OPTION_TYPE_HASH, option.time, option.penalty],
+    ["bytes32", "uint256", "uint256"],
+    [CANCEL_OPTION_TYPE_HASH, option.time, option.penalty]
   );
 
 export const hashPaymentOptionArray = (options: PaymentOption[]): string => {
@@ -46,7 +52,7 @@ export const hashPaymentOptionArray = (options: PaymentOption[]): string => {
   for (let i = 0; i < options.length; i++) {
     hashes[i] = hashPaymentOption(options[i]);
   }
-  return utils.solidityKeccak256(['bytes32[]'], [hashes]);
+  return utils.solidityKeccak256(["bytes32[]"], [hashes]);
 };
 
 export const hashCancelOptionArray = (options: CancelOption[]): string => {
@@ -56,23 +62,23 @@ export const hashCancelOptionArray = (options: CancelOption[]): string => {
     hashes[i] = hashCancelOption(options[i]);
   }
 
-  return utils.solidityKeccak256(['bytes32[]'], [hashes]);
+  return utils.solidityKeccak256(["bytes32[]"], [hashes]);
 };
 
 export const hashOfferPayload = (payload: OfferPayload): string =>
   utils.solidityKeccak256(
     [
-      'bytes32',
-      'bytes32',
-      'uint256',
-      'bytes32',
-      'uint256',
-      'bytes32',
-      'bytes32',
-      'bytes32',
-      'bytes32',
-      'bool',
-      'uint256',
+      "bytes32",
+      "bytes32",
+      "uint256",
+      "bytes32",
+      "uint256",
+      "bytes32",
+      "bytes32",
+      "bytes32",
+      "bytes32",
+      "bool",
+      "uint256",
     ],
     [
       OFFER_TYPE_HASH,
@@ -86,56 +92,56 @@ export const hashOfferPayload = (payload: OfferPayload): string =>
       payload.cancelHash,
       payload.transferable,
       payload.checkIn,
-    ],
+    ]
   );
 
 export const hashCheckInOut = (offerId: string, signer: string): string =>
   utils.solidityKeccak256(
-    ['bytes32', 'bytes32', 'address'],
-    [OFFER_TYPE_HASH, offerId, signer],
+    ["bytes32", "bytes32", "address"],
+    [OFFER_TYPE_HASH, offerId, signer]
   );
 
 export const offerEip712Types: Record<string, Array<TypedDataField>> = {
   Offer: [
     {
-      name: 'id',
-      type: 'bytes32',
+      name: "id",
+      type: "bytes32",
     },
     {
-      name: 'expire',
-      type: 'uint256',
+      name: "expire",
+      type: "uint256",
     },
     {
-      name: 'supplierId',
-      type: 'bytes32',
+      name: "supplierId",
+      type: "bytes32",
     },
     {
-      name: 'chainId',
-      type: 'uint256',
+      name: "chainId",
+      type: "uint256",
     },
     {
-      name: 'requestHash',
-      type: 'bytes32',
+      name: "requestHash",
+      type: "bytes32",
     },
     {
-      name: 'optionsHash',
-      type: 'bytes32',
+      name: "optionsHash",
+      type: "bytes32",
     },
     {
-      name: 'paymentHash',
-      type: 'bytes32',
+      name: "paymentHash",
+      type: "bytes32",
     },
     {
-      name: 'cancelHash',
-      type: 'bytes32',
+      name: "cancelHash",
+      type: "bytes32",
     },
     {
-      name: 'transferable',
-      type: 'bool',
+      name: "transferable",
+      type: "bool",
     },
     {
-      name: 'checkIn',
-      type: 'uint256',
+      name: "checkIn",
+      type: "uint256",
     },
   ],
 };
@@ -143,12 +149,12 @@ export const offerEip712Types: Record<string, Array<TypedDataField>> = {
 export const checkInOutTypes: Record<string, Array<TypedDataField>> = {
   Voucher: [
     {
-      name: 'id',
-      type: 'bytes32',
+      name: "id",
+      type: "bytes32",
     },
     {
-      name: 'signer',
-      type: 'address',
+      name: "signer",
+      type: "address",
     },
   ],
 };
@@ -159,7 +165,7 @@ export const createCheckInOutSignature = async (
   name: string,
   version: string,
   chainId: BigNumber,
-  verifyingContract: string,
+  verifyingContract: string
 ): Promise<string> =>
   await signer._signTypedData(
     {
@@ -172,7 +178,7 @@ export const createCheckInOutSignature = async (
     {
       id: offerId,
       signer: signer.address,
-    },
+    }
   );
 
 export const createPermitSignature = async (
@@ -182,7 +188,7 @@ export const createPermitSignature = async (
   spender: string,
   value: BigNumber,
   deadline: number,
-  version = '1',
+  version = "1"
 ): Promise<string> => {
   const nonce = await erc20.nonces(owner);
   const name = await erc20.name();
@@ -198,24 +204,24 @@ export const createPermitSignature = async (
     {
       Permit: [
         {
-          name: 'owner',
-          type: 'address',
+          name: "owner",
+          type: "address",
         },
         {
-          name: 'spender',
-          type: 'address',
+          name: "spender",
+          type: "address",
         },
         {
-          name: 'value',
-          type: 'uint256',
+          name: "value",
+          type: "uint256",
         },
         {
-          name: 'nonce',
-          type: 'uint256',
+          name: "nonce",
+          type: "uint256",
         },
         {
-          name: 'deadline',
-          type: 'uint256',
+          name: "deadline",
+          type: "uint256",
         },
       ],
     },
@@ -225,11 +231,14 @@ export const createPermitSignature = async (
       value,
       nonce,
       deadline,
-    },
+    }
   );
 };
 
-export const getCancelPenalty = (options: CancelOption[], timestamp: BigNumber) => {
+export const getCancelPenalty = (
+  options: CancelOption[],
+  timestamp: BigNumber
+) => {
   let selectedTime = BigNumber.from(0);
   let selectedPenalty = BigNumber.from(0);
 
@@ -243,7 +252,9 @@ export const getCancelPenalty = (options: CancelOption[], timestamp: BigNumber) 
     }
   }
 
-  return selectedPenalty.lte(BigNumber.from(100)) ? selectedPenalty : BigNumber.from(100);
+  return selectedPenalty.lte(BigNumber.from(100))
+    ? selectedPenalty
+    : BigNumber.from(100);
 };
 
 export const buildOffer = async (
@@ -260,7 +271,7 @@ export const buildOffer = async (
   name: string,
   version: string,
   chainId: BigNumber,
-  verifyingContract: string,
+  verifyingContract: string
 ): Promise<Offer> => {
   const offerPayload: OfferPayload = {
     id: randomId(),
@@ -284,7 +295,7 @@ export const buildOffer = async (
       verifyingContract,
     },
     offerEip712Types,
-    offerPayload,
+    offerPayload
   );
 
   const offer: Offer = {
