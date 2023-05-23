@@ -4,7 +4,7 @@ import {
   PAYMENT_OPTION_TYPE_HASH,
   CANCEL_OPTION_TYPE_HASH,
   OFFER_TYPE_HASH,
-} from "../src/constants";
+} from "./constants";
 import { MockERC20Dec18Permit } from "../typechain";
 import {
   PaymentOption,
