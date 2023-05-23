@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { DeployFunction } from 'hardhat-deploy/types';
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { DeployFunction } from "hardhat-deploy/types";
 import {
   kindsArr,
   eip712name,
@@ -9,12 +9,12 @@ import {
   protocolFee,
   retailerFee,
   minDeposit,
-} from '../utils/constants';
+} from "../utils/constants";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { network, deployments, getNamedAccounts } = hre;
 
-  if (!['hardhat', 'localhost'].includes(network.name)) {
+  if (!["hardhat", "localhost"].includes(network.name)) {
     return;
   }
 
@@ -23,16 +23,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const PROXY_SETTINGS_WITH_UPGRADE = {
     owner,
-    proxyContract: 'OpenZeppelinTransparentProxy',
+    proxyContract: "OpenZeppelinTransparentProxy",
   };
 
   // Simple ERC20 token
-  const erc20 = await deploy('MockERC20Dec18', {
+  const erc20 = await deploy("MockERC20Dec18", {
     proxy: {
       ...PROXY_SETTINGS_WITH_UPGRADE,
       execute: {
-        methodName: 'initialize',
-        args: ['STABLE', 'STABLE', owner],
+        methodName: "initialize",
+        args: ["STABLE", "STABLE", owner],
       },
     },
     from: owner,
@@ -43,17 +43,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (erc20.newlyDeployed) {
     console.log(
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      `MockERC20Dec18 (erc20) was deployed at: ${erc20.address} using ${erc20.receipt?.gasUsed} gas`,
+      `MockERC20Dec18 (erc20) was deployed at: ${erc20.address} using ${erc20.receipt?.gasUsed} gas`
     );
   }
 
   // ERC20 token with permit
-  const lif = await deploy('MockERC20Dec18Permit', {
+  const lif = await deploy("MockERC20Dec18Permit", {
     proxy: {
       ...PROXY_SETTINGS_WITH_UPGRADE,
       execute: {
-        methodName: 'initialize',
-        args: ['LifToken', 'LIF', owner],
+        methodName: "initialize",
+        args: ["LifToken", "LIF", owner],
       },
     },
     from: owner,
@@ -64,16 +64,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (lif.newlyDeployed) {
     console.log(
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      `MockERC20Dec18Permit (lif) was deployed at: ${lif.address} using ${lif.receipt?.gasUsed} gas`,
+      `MockERC20Dec18Permit (lif) was deployed at: ${lif.address} using ${lif.receipt?.gasUsed} gas`
     );
   }
 
   // Protocol Config
-  const protocolConfig = await deploy('Config', {
+  const protocolConfig = await deploy("Config", {
     proxy: {
       ...PROXY_SETTINGS_WITH_UPGRADE,
       execute: {
-        methodName: 'initialize',
+        methodName: "initialize",
         args: [
           owner,
           lif.address,
@@ -94,16 +94,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (protocolConfig.newlyDeployed) {
     console.log(
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      `Config was deployed at: ${protocolConfig.address} using ${protocolConfig.receipt?.gasUsed} gas`,
+      `Config was deployed at: ${protocolConfig.address} using ${protocolConfig.receipt?.gasUsed} gas`
     );
   }
 
   // EntitiesRegistry
-  const entities = await deploy('EntitiesRegistry', {
+  const entities = await deploy("EntitiesRegistry", {
     proxy: {
       ...PROXY_SETTINGS_WITH_UPGRADE,
       execute: {
-        methodName: 'initialize',
+        methodName: "initialize",
         args: [owner, protocolConfig.address],
       },
     },
@@ -115,16 +115,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (entities.newlyDeployed) {
     console.log(
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      `EntitiesRegistry was deployed at: ${entities.address} using ${entities.receipt?.gasUsed} gas`,
+      `EntitiesRegistry was deployed at: ${entities.address} using ${entities.receipt?.gasUsed} gas`
     );
   }
 
   // Market
-  const market = await deploy('Market', {
+  const market = await deploy("Market", {
     proxy: {
       ...PROXY_SETTINGS_WITH_UPGRADE,
       execute: {
-        methodName: 'initialize',
+        methodName: "initialize",
         args: [
           owner,
           eip712name,
@@ -142,10 +142,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (market.newlyDeployed) {
     console.log(
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      `Market was deployed at: ${market.address} using ${market.receipt?.gasUsed} gas`,
+      `Market was deployed at: ${market.address} using ${market.receipt?.gasUsed} gas`
     );
   }
 };
 
 export default func;
-func.tags = ['MockERC20Dec18', 'MockERC20Dec18Permit', 'Market'];
+func.tags = ["MockERC20Dec18", "MockERC20Dec18Permit", "Market"];
