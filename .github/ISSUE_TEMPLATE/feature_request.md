@@ -1,9 +1,9 @@
 ---
 name: Feature request
 about: Suggest an idea for this project
-title: ''
-labels: 'triage needed'
-assignees: ''
+title: ""
+labels: "triage needed"
+assignees: ""
 ---
 
 **⚠️ CAUTION: Any issue related to trading / price / not related with the code directly within this repository will be closed without comment**
