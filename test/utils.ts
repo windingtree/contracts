@@ -7,11 +7,6 @@ import {
   VoidSigner,
   ContractTransaction,
 } from "ethers";
-import {
-  PAYMENT_OPTION_TYPE_HASH,
-  CANCEL_OPTION_TYPE_HASH,
-  OFFER_TYPE_HASH,
-} from "../package/src/constants";
 import { MockERC20Dec18Permit } from "../typechain";
 import {
   PaymentOption,
@@ -24,6 +19,15 @@ import {
 export const nonces: Record<string, number> = {
   request: 1,
 };
+
+export const PAYMENT_OPTION_TYPE_HASH =
+  "0x2f8fc0b3ad3f58f6deb367673d38e4112a3c8c64de033c5b780b84ef8f67cde6";
+
+export const CANCEL_OPTION_TYPE_HASH =
+  "0x8ea27057ea8a0239f02c8b75748218a035a5a2a2a0785b53aaa99af91ff538c5";
+
+export const OFFER_TYPE_HASH =
+  "0xcf2addd2f89a78825d3f130a17e47b4e9963adfd09837fa9c454569faa073354";
 
 export const randomId = (): string =>
   utils.solidityKeccak256(
@@ -353,7 +357,7 @@ export const structEqual = (
   for (const key of Object.keys(obj)) {
     expect(obj[key]).to.eq(
       struct[key],
-      `"${structName}.${key}" value validation failed`
+      `'${structName}.${key}' value validation failed`
     );
   }
 };
