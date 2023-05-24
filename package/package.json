@@ -20,13 +20,12 @@
   ],
   "license": "MIT",
   "private": false,
+  "type": "module",
   "types": "./lib/src/index.d.ts",
   "main": "./lib/src/index.js",
   "files": [
     "src",
     "lib",
-    "artifacts",
-    "typechain",
     "!**/*.tsbuildinfo",
     "!**/**.dbg.json"
   ],
@@ -43,10 +42,6 @@
     ".": {
       "types": "./lib/src/index.d.ts",
       "import": "./lib/src/index.js"
-    },
-    "./types": {
-      "types": "./lib/typechain/index.d.ts",
-      "import": "./lib/typechain/index.js"
     }
   },
   "release": {
@@ -86,12 +81,10 @@
     "prettier-plugin-jsdoc": "^0.4.2",
     "ts-node": "^10.9.1",
     "typescript": "^5.0.4",
-    "ethers": "^6.4.0",
-    "typechain": "^8.1.1",
-    "@typechain/ethers-v6": "^0.3.2"
+    "@wagmi/cli": "^1.0.1"
   },
   "scripts": {
-    "build": "rm -rf ./lib && typechain --target=ethers-v6 --out-dir typechain ./artifacts/contracts/Config.sol/Config.json ./artifacts/contracts/EntitiesRegistry.sol/EntitiesRegistry.json ./artifacts/contracts/Market.sol/Market.json ./artifacts/contracts/test/MockERC20Dec18Permit.sol/MockERC20Dec18Permit.json ./artifacts/contracts/test/MockERC20Dec18.sol/MockERC20Dec18.json ./artifacts/contracts/test/MockERC20Dec6Permit.sol/MockERC20Dec6Permit.json ./artifacts/contracts/test/MockERC20Dec6.sol/MockERC20Dec6.json && tsc -p ./tsconfig.build.json",
+    "build": "rm -rf lib && yarn wagmi generate && tsc -p ./tsconfig.build.json",
     "lint": "eslint --ext .ts",
     "lint:fix": "eslint --ext .ts --fix && prettier --check !network --write ."
   }

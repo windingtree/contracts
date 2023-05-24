@@ -1,10 +1,8 @@
-import { encodeBytes32String } from 'ethers';
-
 // Protocol entities types (kinds) as object
 export const kinds = {
-  // ethers.encodeBytes32String('supplier')
+  // 'supplier'
   supplier: '0x737570706c696572000000000000000000000000000000000000000000000000',
-  // ethers.encodeBytes32String('retailer')
+  // 'retailer'
   retailer: '0x72657461696c6572000000000000000000000000000000000000000000000000',
 };
 
