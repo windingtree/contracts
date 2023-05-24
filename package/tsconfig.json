@@ -2,8 +2,8 @@
   "compilerOptions": {
     "strict": true,
     "esModuleInterop": true,
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
-    "target": "ESNext",
+    "lib": ["ES2022", "DOM"],
+    "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "NodeNext",
     "skipLibCheck": true,
@@ -19,5 +19,5 @@
     "importsNotUsedAsValues": "remove",
     "noImplicitReturns": true
   },
-  "include": ["src/**/*.ts", "typechain/**/*.ts"]
+  "include": ["./src/index.ts"]
 }
