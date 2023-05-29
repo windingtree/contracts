@@ -14,7 +14,7 @@ import {
   protocolFee,
   retailerFee,
   minDeposit,
-} from "../utils/constants";
+} from "../utils";
 
 const setupToken = async (
   proxySettings: { owner: string; proxyContract: string },
@@ -29,10 +29,10 @@ const setupToken = async (
     contract: contractName,
     proxy: {
       ...proxySettings,
-      execute: {
-        methodName: "initialize",
-        args: [tokenName, tokenSymbol, owner],
-      },
+      // execute: {
+      //   methodName: "initialize",
+      //   args: [tokenName, tokenSymbol, owner],
+      // },
     },
     from: owner,
     log: true,
@@ -128,19 +128,19 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const protocolConfig = await deploy("Config", {
     proxy: {
       ...PROXY_SETTINGS_WITH_UPGRADE,
-      execute: {
-        methodName: "initialize",
-        args: [
-          owner,
-          lif.address,
-          claimPeriod,
-          protocolFee,
-          retailerFee,
-          owner,
-          kindsArr,
-          kindsArr.map(() => minDeposit), // same limit for all
-        ],
-      },
+      // execute: {
+      //   methodName: "initialize",
+      //   args: [
+      //     owner,
+      //     lif.address,
+      //     claimPeriod,
+      //     protocolFee,
+      //     retailerFee,
+      //     owner,
+      //     kindsArr,
+      //     kindsArr.map(() => minDeposit), // same limit for all
+      //   ],
+      // },
     },
     from: owner,
     log: true,
@@ -158,10 +158,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const entities = await deploy("EntitiesRegistry", {
     proxy: {
       ...PROXY_SETTINGS_WITH_UPGRADE,
-      execute: {
-        methodName: "initialize",
-        args: [owner, protocolConfig.address],
-      },
+      // execute: {
+      //   methodName: "initialize",
+      //   args: [owner, protocolConfig.address],
+      // },
     },
     from: owner,
     log: true,
@@ -179,16 +179,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const market = await deploy("Market", {
     proxy: {
       ...PROXY_SETTINGS_WITH_UPGRADE,
-      execute: {
-        methodName: "initialize",
-        args: [
-          owner,
-          eip712name,
-          eip712version,
-          protocolConfig.address,
-          entities.address,
-        ],
-      },
+      // execute: {
+      //   methodName: "initialize",
+      //   args: [
+      //     owner,
+      //     eip712name,
+      //     eip712version,
+      //     protocolConfig.address,
+      //     entities.address,
+      //   ],
+      // },
     },
     from: owner,
     log: true,

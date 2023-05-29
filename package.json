@@ -59,7 +59,8 @@
     "@typechain/hardhat": "^6.1.6",
     "@typechain/ethers-v5": "^10.2.1",
     "@typechain/ethers-v6": "^0.3.2",
-    "dotenv": "^16.0.3"
+    "dotenv": "^16.0.3",
+    "viem": "^0.3.37"
   },
   "dependencies": {
     "@openzeppelin/contracts-upgradeable": "^4.8.3"
