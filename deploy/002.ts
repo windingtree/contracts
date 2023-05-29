@@ -6,15 +6,6 @@ import {
   DeployOptions,
   DeployResult,
 } from "hardhat-deploy/types";
-import {
-  kindsArr,
-  eip712name,
-  eip712version,
-  claimPeriod,
-  protocolFee,
-  retailerFee,
-  minDeposit,
-} from "../utils";
 
 const setupToken = async (
   proxySettings: { owner: string; proxyContract: string },
