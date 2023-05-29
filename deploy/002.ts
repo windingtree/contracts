@@ -14,7 +14,7 @@ import {
   protocolFee,
   retailerFee,
   minDeposit,
-} from "../temp/utils/constants";
+} from "../utils";
 
 const setupToken = async (
   proxySettings: { owner: string; proxyContract: string },

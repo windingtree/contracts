@@ -11,7 +11,7 @@ import "hardhat-gas-reporter";
 import "hardhat-contract-sizer";
 import "solidity-coverage";
 import "./tasks";
-import { nodeUrl, accounts, addForkConfiguration } from "./temp/utils/network";
+import { nodeUrl, accounts, addForkConfiguration } from "./utils/network";
 
 const config: HardhatUserConfig = {
   solidity: {
