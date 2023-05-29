@@ -27,7 +27,7 @@ export const CANCEL_OPTION_TYPE_HASH =
   "0x8ea27057ea8a0239f02c8b75748218a035a5a2a2a0785b53aaa99af91ff538c5";
 
 export const OFFER_TYPE_HASH =
-  "0xcf2addd2f89a78825d3f130a17e47b4e9963adfd09837fa9c454569faa073354";
+  "0x4fb12343a6f44152999c71291770d97fc1eace9d7d04889330d5a6d1af4a57c7";
 
 export const randomId = (): string =>
   utils.solidityKeccak256(
@@ -156,6 +156,10 @@ export const offerEip712Types: Record<string, Array<TypedDataField>> = {
     },
     {
       name: "checkIn",
+      type: "uint256",
+    },
+    {
+      name: "checkOut",
       type: "uint256",
     },
   ],
