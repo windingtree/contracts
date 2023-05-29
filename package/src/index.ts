@@ -16,3 +16,4 @@ export {
 };
 export * from './constants.js';
 export * from '../wagmi/index.js';
+export * from './hash.js';
