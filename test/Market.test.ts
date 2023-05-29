@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { BigNumber, constants } from "ethers";
 import { ethers } from "hardhat";
 import { TransferEventObject } from "../typechain/contracts/Market";
-import { kinds } from "../utils/constants";
+import { kinds } from "../utils";
 import { Offer } from "../utils/types";
 import {
   structEqual,

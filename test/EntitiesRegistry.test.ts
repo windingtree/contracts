@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { BigNumber, constants } from "ethers";
-import { minDeposit, kinds } from "../utils/constants";
+import { minDeposit, kinds } from "../utils";
 import { randomId, createSupplierId, createPermitSignature } from "./utils";
 import { User, setup, registerEntity } from "./setup";
 

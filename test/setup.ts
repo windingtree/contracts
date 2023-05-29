@@ -8,7 +8,7 @@ import {
 } from "../typechain";
 import { ethers, deployments, getNamedAccounts } from "hardhat";
 import { BigNumber, Contract, VoidSigner } from "ethers";
-import { protocolFee, retailerFee, minDeposit } from "../utils/constants";
+import { protocolFee, retailerFee, minDeposit } from "../utils";
 import { structEqual, createSupplierId } from "./utils";
 
 export interface Contracts {

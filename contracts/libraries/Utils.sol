@@ -17,7 +17,7 @@ library Utils {
   bytes32 public constant OFFER_TYPE_HASH =
     keccak256(
       // solhint-disable-next-line max-line-length
-      "Offer(bytes32 id,uint256 expire,bytes32 supplierId,uint256 chainId,bytes32 requestHash,bytes32 optionsHash,bytes32 paymentHash,bytes32 cancelHash,bool transferable,uint256 checkIn)"
+      "Offer(bytes32 id,uint256 expire,bytes32 supplierId,uint256 chainId,bytes32 requestHash,bytes32 optionsHash,bytes32 paymentHash,bytes32 cancelHash,bool transferable,uint256 checkIn,uint256 checkOut)"
     );
 
   bytes32 public constant CHECK_IN_TYPE_HASH =
@@ -180,7 +180,8 @@ library Utils {
           _offer.paymentHash,
           _offer.cancelHash,
           _offer.transferable,
-          _offer.checkIn
+          _offer.checkIn,
+          _offer.checkOut
         )
       );
   }
