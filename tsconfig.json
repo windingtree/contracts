@@ -26,6 +26,6 @@
     "./hardhat.config.ts",
     "./deploy/**/*.ts",
     "./tasks/**/*.ts",
-    "./utils/**/*.ts"
-  ]
+    "temp/utils/**/*.ts"
+, "package/src/hash.ts", "temp/Hash.test.ts"  ]
 }
