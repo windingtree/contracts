@@ -37,3 +37,67 @@ export const OFFER_TYPE_HASH =
 // );
 export const CHECK_IN_TYPE_HASH =
   '0xf811d7f3ddb148410001929e2cbfb7fea8779b9349b7c2f650fa91840528d69c';
+
+/** EIP-712 JSON schema types for offer */
+export const offerEip712Types = {
+  Offer: [
+    {
+      name: 'id',
+      type: 'bytes32',
+    },
+    {
+      name: 'expire',
+      type: 'uint256',
+    },
+    {
+      name: 'supplierId',
+      type: 'bytes32',
+    },
+    {
+      name: 'chainId',
+      type: 'uint256',
+    },
+    {
+      name: 'requestHash',
+      type: 'bytes32',
+    },
+    {
+      name: 'optionsHash',
+      type: 'bytes32',
+    },
+    {
+      name: 'paymentHash',
+      type: 'bytes32',
+    },
+    {
+      name: 'cancelHash',
+      type: 'bytes32',
+    },
+    {
+      name: 'transferable',
+      type: 'bool',
+    },
+    {
+      name: 'checkIn',
+      type: 'uint256',
+    },
+    {
+      name: 'checkOut',
+      type: 'uint256',
+    },
+  ],
+} as const;
+
+/** EIP-712 JSON schema types for checkIn/Out voucher */
+export const checkInOutEip712Types = {
+  Voucher: [
+    {
+      name: 'id',
+      type: 'bytes32',
+    },
+    {
+      name: 'signer',
+      type: 'address',
+    },
+  ],
+} as const;
