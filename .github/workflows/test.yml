@@ -17,10 +17,10 @@ jobs:
         with:
           node-version: "lts/*"
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        uses: ./.github/actions/install-dependencies
       - name: Lint
-        run: yarn lint
+        run: pnpm lint
       - name: Check contract sizes
-        run: yarn hardhat size-contracts
+        run: pnpm hardhat size-contracts
       - name: Test
-        run: yarn test
+        run: pnpm test

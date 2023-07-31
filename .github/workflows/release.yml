@@ -17,23 +17,16 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: "lts/*"
-      - name: Yarn 2 setup
-        run: |
-          corepack enable
-          corepack prepare yarn@stable --activate
-          yarn set version stable
       - name: Install dependencies
-        run: |
-          yarn install --immutable
-          yarn ./package install --immutable
+        uses: ./.github/actions/install-dependencies
       - name: Lint
         run: |
-          yarn lint
-          yarn --cwd package lint
+          pnpm lint
+          pnpm --dir ./package lint
       - name: Build project
-        run: yarn package:update
+        run: pnpm package:update
       - name: Test
-        run: yarn test
+        run: pnpm test
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
