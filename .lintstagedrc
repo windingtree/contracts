@@ -1,0 +1,7 @@
+{
+  "*.{ts,js}": [
+    "prettier --write",
+    "eslint --config ./.eslintrc --ignore-path ./.eslintignore --cache --fix"
+  ],
+  "*.md": ["prettier --write"]
+}

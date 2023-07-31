@@ -1,0 +1,15 @@
+node_modules
+.github
+dist
+lib
+build
+coverage
+coverage.json
+typedoc
+temp
+artifacts-zk
+cache-zk
+artifacts
+cache
+network
+wagmi
