@@ -21,3 +21,4 @@ typechain
 typechainV6
 network/volumes
 deployments/localhost
+.yarn

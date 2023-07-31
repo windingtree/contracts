@@ -19,8 +19,9 @@ jobs:
           node-version: "lts/*"
       - name: Install dependencies
         run: |
-          yarn install --frozen-lockfile
-          yarn --cwd package install --frozen-lockfile
+          yarn set version berry
+          yarn install --immutable
+          yarn ./package install --immutable
       - name: Lint
         run: |
           yarn lint
