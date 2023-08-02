@@ -67,7 +67,7 @@
   },
   "scripts": {
     "build": "hardhat compile",
-    "package:update": "rm -rf ./package/typechain ./package/artifacts && yarn build && cp -r ./artifacts ./package/artifacts && cp ./README.md ./package/README.md && yarn --cwd ./package build",
+    "package:update": "rm -rf ./package/typechain ./package/artifacts && pnpm build && cp -r ./artifacts ./package/artifacts && cp ./README.md ./package/README.md && pnpm --dir ./package install && pnpm --dir ./package build",
     "test": "hardhat test",
     "lint": "solhint . && eslint --ext .ts",
     "lint:fix": "eslint --ext .ts --fix && solhint --fix . && prettier --check !network --write .",

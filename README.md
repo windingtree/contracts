@@ -24,20 +24,20 @@ The WindingTree market protocol smart contracts and utilities
 ## Install package
 
 ```bash
-yarn add @windingtree/contracts
+pnpm add @windingtree/contracts
 ```
 
 ## Setup
 
 ```bash
-yarn
-yarn build:contracts
+pnpm
+pnpm build:contracts
 ```
 
 ## Testing
 
 ```bash
-yarn test:contracts
+pnpm test:contracts
 ```
 
 ## Contributing
