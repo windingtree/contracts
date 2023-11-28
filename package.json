@@ -69,11 +69,10 @@
     "build": "hardhat compile",
     "package:update": "rm -rf ./package/typechain ./package/artifacts && pnpm build && cp -r ./artifacts ./package/artifacts && cp ./README.md ./package/README.md && pnpm --dir ./package install && pnpm --dir ./package build",
     "test": "hardhat test",
-    "lint": "solhint . && eslint --ext .ts",
-    "lint:fix": "eslint --ext .ts --fix && solhint --fix . && prettier --check !network --write .",
+    "lint": "solhint . && eslint --ignore-path ./.lintignore --ext .ts",
+    "lint:fix": "eslint --ignore-path ./.lintignore --ext .ts --fix && solhint --fix . && prettier --ignore-path ./.lintignore --check !network --write .",
     "coverage": "npx hardhat coverage",
     "prepare": "husky install",
     "commit": "git-cz -S"
-  },
-  "packageManager": "yarn@3.6.1"
+  }
 }
