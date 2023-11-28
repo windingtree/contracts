@@ -54,6 +54,16 @@ const config: HardhatUserConfig = {
         },
       },
     },
+    chiado: {
+      url: "https://rpc.chiadochain.net",
+      gasPrice: 1000000000,
+      accounts: accounts("chiado"),
+      verify: {
+        etherscan: {
+          apiUrl: "https://blockscout.com/gnosis/chiado",
+        },
+      },
+    },
   }),
   gasReporter: {
     currency: "USD",

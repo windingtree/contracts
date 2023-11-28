@@ -1,0 +1,13 @@
+cache
+node_modules
+.github
+.husky
+dist
+lib
+coverage
+typedoc
+temp
+OLD_CODEBASE
+deployments
+artifacts
+typechain

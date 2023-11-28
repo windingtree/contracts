@@ -21,6 +21,20 @@ The WindingTree market protocol smart contracts and utilities
 - `STABLE18`: [ERC20, 18 decimals, no permit](https://explorer.public.zkevm-test.net/address/0x4EcB659060Da61D795D777bb21BAe3599b301C66/read-proxy#address-tabs)
 - `STABLE18PERMIT`: [ERC20, 18 decimals, with permit](https://explorer.public.zkevm-test.net/address/0xF54784206A53EF19fd3024D8cdc7A6251A4A0d67/read-proxy#address-tabs)
 
+### Gnosis Chiado
+
+- Config ([0x4556d5C1486d799f67FA96c84F1d0552486CAAF4](https://gnosis-chiado.blockscout.com/address/0x4556d5C1486d799f67FA96c84F1d0552486CAAF4?tab=read_proxy)): the protocol configuration smart contract
+- EntitiesRegistry ([0x4EcB659060Da61D795D777bb21BAe3599b301C66](https://gnosis-chiado.blockscout.com/address/0x4EcB659060Da61D795D777bb21BAe3599b301C66?tab=read_proxy)): the protocol identity management
+- Market ([0xF54784206A53EF19fd3024D8cdc7A6251A4A0d67](https://gnosis-chiado.blockscout.com/address/0xF54784206A53EF19fd3024D8cdc7A6251A4A0d67?tab=read_proxy)): the protocol entry point
+- LIF ([0x8CB96383609C56af1Fe44DB7591F94AEE2fa43b2](https://gnosis-chiado.blockscout.com/address/0x8CB96383609C56af1Fe44DB7591F94AEE2fa43b2?tab=read_proxy)): Test version of LIF token
+
+#### Testing tokens
+
+- `STABLE6`: [ERC20, 6 decimals, no permit](https://gnosis-chiado.blockscout.com/address/0xcC28A4e6DEF318A1b88CF34c4F2Eeb2489995513?tab=read_proxy)
+- `STABLE6PERMIT`: [ERC20, 6 decimals, with permit](https://gnosis-chiado.blockscout.com/address/0x78F924A7C70213D502E6110567AC556c2EFBBF73?tab=read_proxy)
+- `STABLE18`: [ERC20, 18 decimals, no permit](https://gnosis-chiado.blockscout.com/address/0x7067fC74fFCf4096796454747461D098E6bF7241?tab=read_proxy)
+- `STABLE18PERMIT`: [ERC20, 18 decimals, with permit](https://gnosis-chiado.blockscout.com/address/0x44947d69A9F06EF48170BD41Da9B27E74ecd0891?tab=read_proxy)
+
 ## Install package
 
 ```bash
