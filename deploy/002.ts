@@ -53,7 +53,7 @@ const setupToken = async (
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { network, deployments, getNamedAccounts } = hre;
 
-  if (!["polzktest", "chiado"].includes(network.name)) {
+  if (!["chiado"].includes(network.name)) {
     return;
   }
 
