@@ -15,7 +15,7 @@ export function nodeUrl(networkName: string): string {
 
   if (networkName === "localhost") {
     // do not use ETH_NODE_URI
-    return "http://localhost:8545";
+    return "http://0.0.0.0:8545";
   }
 
   let uri = process.env.ETH_NODE_URI;

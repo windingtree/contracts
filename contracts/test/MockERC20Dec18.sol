@@ -38,7 +38,7 @@ contract MockERC20Dec18 is
     _unpause();
   }
 
-  function mint(address to, uint256 amount) public onlyOwner {
+  function mint(address to, uint256 amount) public {
     _mint(to, amount);
   }
 
